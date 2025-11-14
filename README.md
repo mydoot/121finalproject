@@ -1,14 +1,14 @@
 # CMPM 121 Final Project
 
-Devlog - [https://docs.google.com/document/d/1fs065H6d7PleadUYDbOOKRbWhj40Rm5dpaqsy1mRFmo/edit?usp=sharing]
+[**Devlog**](https://docs.google.com/document/d/1fs065H6d7PleadUYDbOOKRbWhj40Rm5dpaqsy1mRFmo/edit?usp=sharing)
 
 
 # Team
 
-Tools Lead: Ryle
-Engine Lead: Ryle
-Design Lead: Richie
-Testing Lead: Richie
+- Tools Lead: Ryle
+- Engine Lead: Ryle
+- Design Lead: Richie
+- Testing Lead: Richie
 
 
 # Tools and materials

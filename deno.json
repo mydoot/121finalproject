@@ -33,7 +33,7 @@
     "lint": "deno lint",
     "fmt": "deno fmt",
     "fmt:check": "deno fmt --check",
-    "ci": "deno fmt --check main.js && deno lint main.js && deno check main.js && deno task build"
+    "ci": "deno fmt --check && deno lint && deno check src/**/*.js && deno task build"
   },
   "exclude": [
     "node_modules",

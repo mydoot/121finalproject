@@ -5,10 +5,10 @@
 
 # Team
 
-- Tools Lead: Ryle
+- Tools Lead: Miga
 - Engine Lead: Ryle
 - Design Lead: Richie
-- Testing Lead: Richie
+- Testing Lead: Richie, Ryle, Miga
 
 
 # Tools and materials

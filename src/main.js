@@ -1,15 +1,13 @@
 import RAPIER from "@dimforge/rapier3d-compat";
 import * as THREE from "three";
 
-class Command {
+/* class Command {
   execute() {
-
   }
 }
 
 class InputHandler {
-
-}
+} */
 
 // 1. Define the async starter
 async function runGame() {
@@ -24,7 +22,6 @@ async function runGame() {
   // 2. NOW it is safe to create the world
   const gravity = { x: 0.0, y: -9.81, z: 0.0 };
   const world = new RAPIER.World(gravity);
-
 
   // 3. Setup Three.js Scene
   const scene = new THREE.Scene();
@@ -52,8 +49,8 @@ async function runGame() {
     constructor({ width, height, depth }) {
       super(
         new THREE.SphereGeometry(width, height, depth),
-        new THREE.MeshStandardMaterial({ color: 0xffff00 })
-      )
+        new THREE.MeshStandardMaterial({ color: 0xffff00 }),
+      );
       this.height = 3;
     }
   }
@@ -63,15 +60,15 @@ async function runGame() {
   const sphere = new Box({
     width: 1,
     height: 32,
-    depth: 16
-  })
+    depth: 16,
+  });
   sphere.castShadow = true;
   scene.add(sphere);
 
   const ground = new THREE.Mesh(
     new THREE.BoxGeometry(10, 0.5, 15),
-    new THREE.MeshStandardMaterial({ color: 0xF54927 })
-  )
+    new THREE.MeshStandardMaterial({ color: 0xF54927 }),
+  );
   ground.receiveShadow = true;
   ground.position.y = -3;
   scene.add(ground);
@@ -90,7 +87,6 @@ async function runGame() {
   const groundCollider = RAPIER.ColliderDesc.cuboid(2.5, 0.25, 7.5)
     .setRestitution(0.7); // Add 70% bounciness
   world.createCollider(groundCollider, groundBody);
-
 
   const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
   directionalLight.position.z = 1;

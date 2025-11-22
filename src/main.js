@@ -1,29 +1,122 @@
 import RAPIER from "@dimforge/rapier3d-compat";
 import * as THREE from "three";
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-/* class Command {
-  execute() {
+
+class Sphere extends THREE.Mesh {
+  constructor({ width, height, depth }) {
+    super(
+      new THREE.SphereGeometry(width, height, depth),
+      new THREE.MeshStandardMaterial({ color: 0xffff00 }),
+    );
+    this.height = 3;
+  }
+}
+
+class Player extends Sphere {
+  #movementSpeed;
+
+  constructor({ width, height, depth }, speed) {
+    super(width, height, depth)
+    this.#movementSpeed = speed;
+  }
+
+  move(x, z) {
+    // 1. Calculate force based on speed
+    // We invoke the physics engine here
+    const impulse = { x: x * this.#movementSpeed, y: 0, z: z * this.#movementSpeed };
+
+    // 2. Apply impulse (force) to the center of the body
+    // true = wake up the body if it's sleeping
+    this.body.applyImpulse(impulse, true);
+  }
+
+  jump() {
+    // Only jump if we are close to the ground (simplified check)
+    if (Math.abs(this.body.linvel().y) < 0.1) {
+      this.body.applyImpulse({ x: 0, y: 10, z: 0 }, true);
+    }
+  }
+}
+
+class Command {
+  execute(actor) {
+    return actor;
   }
 }
 
 class InputHandler {
-} */
 
-// 1. Define the async starter
+  constructor() {
+    this.keys = new Set(); // Stores 'w', 'a', 's', 'd'
+
+    // 1. Setup Event Listeners
+    // We bind(this) to ensure 'this' refers to the class, not the event
+    globalThis.addEventListener('keydown', (e) => this.keys.add(e.code));
+    globalThis.addEventListener('keyup', (e) => this.keys.delete(e.code));
+  }
+
+  isPressed(key, check) {
+    return (key == check) ? true : false;
+  }
+
+  Input(key) {
+    if (this.isPressed('KeyW', key)) {
+      console.log(`key ${key} pressed`);
+    }
+    else if (this.isPressed('KeyA', key)) {
+      console.log(`key ${key} pressed`);
+    }
+    else if (this.isPressed('KeyS', key)) {
+      console.log(`key ${key} pressed`);
+    }
+    else if (this.isPressed('KeyD', key)) {
+      console.log(`key ${key} pressed`);
+    }
+    else if (this.isPressed('Space', key)) {
+      console.log(`key ${key} pressed`);
+    }
+  }
+
+}
+
+class MoveCommand extends Command {
+  constructor(x, z) {
+    super();
+    this.x = x;
+    this.z = z;
+  }
+
+  execute(actor) {
+    actor.move(this.x, this.z);
+  }
+}
+
+class JumpCommand extends Command {
+  execute(actor) {
+    actor.jump();
+  }
+}
+
+
+function notify(name) {
+  observer.dispatchEvent(new Event(name));
+}
+
 async function runGame() {
-  // --- CRITICAL STEP ---
-  // You must wait for this promise to resolve before doing ANYTHING else.
+
   await RAPIER.init();
-  //await THREE.init();
-  // ---------------------
+
 
   console.log("Rapier is ready. Starting game...");
 
-  // 2. NOW it is safe to create the world
+  const observer = new EventTarget();
+
   const gravity = { x: 0.0, y: -9.81, z: 0.0 };
   const world = new RAPIER.World(gravity);
 
-  // 3. Setup Three.js Scene
+  const inputHandler = new InputHandler;
+
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(
     75,
@@ -36,7 +129,14 @@ async function runGame() {
   renderer.setSize(globalThis.innerWidth, globalThis.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  // 3. Create the Physics Body (The "Soul")
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; // Adds momentum/smoothness to the movement
+  controls.dampingFactor = 0.05; // How quickly it slows down
+  controls.minDistance = 5;      // Don't let user zoom inside the ball
+  controls.maxDistance = 50;     // Don't let user zoom too far away
+
+
   const rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic()
     .setTranslation(0.0, 5.0, 0.0); // Start 5 units up
   const rigidBody = world.createRigidBody(rigidBodyDesc);
@@ -45,25 +145,20 @@ async function runGame() {
   const colliderDesc = RAPIER.ColliderDesc.ball(1.0); // Radius 1.0
   world.createCollider(colliderDesc, rigidBody);
 
-  class Box extends THREE.Mesh {
-    constructor({ width, height, depth }) {
-      super(
-        new THREE.SphereGeometry(width, height, depth),
-        new THREE.MeshStandardMaterial({ color: 0xffff00 }),
-      );
-      this.height = 3;
-    }
-  }
-
   /*  const geometry = new THREE.SphereGeometry(1, 32, 16);
    const material = new THREE.MeshStandardMaterial({ color: 0xffff00 }); */
-  const sphere = new Box({
+  const player = new Player({
     width: 1,
     height: 32,
     depth: 16,
   });
-  sphere.castShadow = true;
-  scene.add(sphere);
+  /* const sphere = new Box({
+    width: 1,
+    height: 32,
+    depth: 16,
+  }); */
+  player.castShadow = true;
+  scene.add(player);
 
   const ground = new THREE.Mesh(
     new THREE.BoxGeometry(10, 0.5, 15),
@@ -95,6 +190,11 @@ async function runGame() {
 
   camera.position.z = 10;
 
+
+  globalThis.addEventListener("keydown", (event) => {
+    inputHandler.Input(event.code);
+  })
+
   // 4. Start your loop ONLY after everything is ready
   function animate() {
     requestAnimationFrame(animate);
@@ -103,8 +203,8 @@ async function runGame() {
     const position = rigidBody.translation();
     const rotation = rigidBody.rotation();
 
-    sphere.position.set(position.x, position.y, position.z);
-    sphere.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
+    player.position.set(position.x, position.y, position.z);
+    player.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
 
     renderer.render(scene, camera);
   }

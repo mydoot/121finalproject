@@ -14,7 +14,9 @@
     "rules": {
       "tags": [
         "recommended"
-      ]
+      ],
+      "exclude": ["no-unused-vars"],
+      "_comment": "we are allowing unused variables for now"
     }
   },
   "fmt": {

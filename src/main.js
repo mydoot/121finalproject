@@ -1,7 +1,6 @@
 import RAPIER from "@dimforge/rapier3d-compat";
 import * as THREE from "three";
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 class Sphere extends THREE.Mesh {
   constructor({ width, height, depth }) {
@@ -17,7 +16,7 @@ class Player extends Sphere {
   #movementSpeed;
 
   constructor({ width, height, depth, speed, rigidBody, world }) {
-    super(width, height, depth)
+    super(width, height, depth);
     this.world = world;
     this.#movementSpeed = speed;
     this.body = rigidBody;
@@ -26,7 +25,11 @@ class Player extends Sphere {
   move(x, z) {
     // 1. Calculate force based on speed
     // We invoke the physics engine here
-    const impulse = { x: x * this.#movementSpeed, y: 0, z: z * this.#movementSpeed };
+    const impulse = {
+      x: x * this.#movementSpeed,
+      y: 0,
+      z: z * this.#movementSpeed,
+    };
 
     this.body.setLinearDamping(2.0);
     this.body.applyImpulse(impulse, true);
@@ -38,15 +41,12 @@ class Player extends Sphere {
     const translation = this.body.translation();
     const origin = { x: translation.x, y: translation.y, z: translation.z };
 
-
     // Shoot straight down
     const direction = { x: 0, y: -1, z: 0 };
     const ray = new RAPIER.Ray(origin, direction);
 
-
     const maxToi = 1.1;
     const solid = true; // Consider all colliders solid
-
 
     const hit = this.world.castRay(
       ray,
@@ -55,7 +55,7 @@ class Player extends Sphere {
       0xffffffff, // Default groups (hit everything)
       null,
       null,
-      this.body   // ray ignores player body
+      this.body, // ray ignores player body
     );
 
     // D. The Check
@@ -72,7 +72,6 @@ class Command {
   }
 }
 
-
 class JumpCommand extends Command {
   execute(actor) {
     actor.jump();
@@ -80,14 +79,13 @@ class JumpCommand extends Command {
 }
 
 class InputHandler {
-
   constructor() {
     this.keys = new Set(); // Stores 'w', 'a', 's', 'd'
 
     // 1. Setup Event Listeners
     // We bind(this) to ensure 'this' refers to the class, not the event
-    globalThis.addEventListener('keydown', (e) => this.keys.add(e.code));
-    globalThis.addEventListener('keyup', (e) => this.keys.delete(e.code));
+    globalThis.addEventListener("keydown", (e) => this.keys.add(e.code));
+    globalThis.addEventListener("keyup", (e) => this.keys.delete(e.code));
   }
 
   isPressed(key, check) {
@@ -95,23 +93,22 @@ class InputHandler {
   }
 
   Input() {
-
     let x = 0;
     let z = 0;
 
-    if (this.keys.has('KeyW')) {
+    if (this.keys.has("KeyW")) {
       z -= 1;
     }
-    if (this.keys.has('KeyA')) {
+    if (this.keys.has("KeyA")) {
       x -= 1;
     }
-    if (this.keys.has('KeyS')) {
+    if (this.keys.has("KeyS")) {
       z += 1;
     }
-    if (this.keys.has('KeyD')) {
+    if (this.keys.has("KeyD")) {
       x += 1;
     }
-    if (this.keys.has('Space')) {
+    if (this.keys.has("Space")) {
       return new JumpCommand();
     }
 
@@ -121,7 +118,6 @@ class InputHandler {
 
     return null;
   }
-
 }
 
 class MoveCommand extends Command {
@@ -141,9 +137,7 @@ function notify(name) {
 }
 
 async function runGame() {
-
   await RAPIER.init();
-
 
   console.log("Rapier is ready. Starting game...");
 
@@ -166,13 +160,11 @@ async function runGame() {
   renderer.setSize(globalThis.innerWidth, globalThis.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true; // Adds momentum/smoothness to the movement
   controls.dampingFactor = 0.05; // How quickly it slows down
-  controls.minDistance = 5;      // Don't let user zoom inside the ball
-  controls.maxDistance = 50;     // Don't let user zoom too far away
-
+  controls.minDistance = 5; // Don't let user zoom inside the ball
+  controls.maxDistance = 50; // Don't let user zoom too far away
 
   const rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic()
     .setTranslation(0.0, 5.0, 0.0)
@@ -191,9 +183,8 @@ async function runGame() {
     depth: 16,
     speed: 1,
     rigidBody: rigidBody,
-    world: world
-  },
-  );
+    world: world,
+  });
   /* const sphere = new Box({
     width: 1,
     height: 32,
@@ -225,7 +216,7 @@ async function runGame() {
   const groundCollider = RAPIER.ColliderDesc.cuboid(
     size.x / 2,
     size.y / 2,
-    size.z / 2
+    size.z / 2,
   );
 
   world.createCollider(groundCollider, groundBody);
@@ -236,7 +227,6 @@ async function runGame() {
   scene.add(directionalLight);
 
   camera.position.z = 10;
-
 
   /* globalThis.addEventListener("keydown", (event) => {
     inputHandler.Input(event.code);
@@ -253,7 +243,7 @@ async function runGame() {
     player.position.set(position.x, position.y, position.z);
     player.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
 
-    const command = inputHandler.Input()
+    const command = inputHandler.Input();
     if (command) {
       command.execute(player);
     }

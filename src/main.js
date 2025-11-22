@@ -1,32 +1,40 @@
+import RAPIER from "@dimforge/rapier3d-compat";
 import * as THREE from "three";
 
-// !!TEMPORARY CODE COPIED DIRECTLY FROM THREE GITHUB !!
+// 1. Define the async starter
+async function runGame() {
+  // --- CRITICAL STEP ---
+  // You must wait for this promise to resolve before doing ANYTHING else.
+  await RAPIER.init();
+  // ---------------------
 
-const width = globalThis.innerWidth, height = globalThis.innerHeight;
+  console.log("Rapier is ready. Starting game...");
 
-// init
+  // 2. NOW it is safe to create the world
+  const gravity = { x: 0.0, y: -9.81, z: 0.0 };
+  const world = new RAPIER.World(gravity);
 
-const camera = new THREE.PerspectiveCamera(70, width / height, 0.01, 10);
-camera.position.z = 1;
+  // 3. Setup Three.js Scene
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(
+    75,
+    globalThis.innerWidth / globalThis.innerHeight,
+    0.1,
+    1000,
+  );
+  const renderer = new THREE.WebGLRenderer();
+  renderer.setSize(globalThis.innerWidth, globalThis.innerHeight);
+  document.body.appendChild(renderer.domElement);
 
-const scene = new THREE.Scene();
+  // 4. Start your loop ONLY after everything is ready
+  function animate() {
+    requestAnimationFrame(animate);
+    world.step(); // Physics step
+    renderer.render(scene, camera);
+  }
 
-const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-const material = new THREE.MeshNormalMaterial();
-
-const mesh = new THREE.Mesh(geometry, material);
-scene.add(mesh);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(width, height);
-renderer.setAnimationLoop(animate);
-document.body.appendChild(renderer.domElement);
-
-// animation
-
-function animate(time) {
-  mesh.rotation.x = time / 2000;
-  mesh.rotation.y = time / 1000;
-
-  renderer.render(scene, camera);
+  animate();
 }
+
+// 5. Execute the function
+runGame();

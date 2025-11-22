@@ -2,14 +2,12 @@
 
 [**Devlog**](https://docs.google.com/document/d/1fs065H6d7PleadUYDbOOKRbWhj40Rm5dpaqsy1mRFmo/edit?usp=sharing)
 
-
 # Team
 
 - Tools Lead: Miga
 - Engine Lead: Ryle
 - Design Lead: Richie
 - Testing Lead: Richie, Ryle, Miga
-
 
 # Tools and materials
 
@@ -20,7 +18,6 @@ Language: Javascript, Typescript when using a JS/TS framework, but if we decide 
 Tools: We plan to use VSCode for our IDE. Other tools like Adobe Photoshop and Blender may be used in order to create our assets, as they are free to access (We students get a free Adobe subscription, and Blender is free) and are also powerful tools for their jobs.
 
 Generative AI: We might use generative AI and agentic coding tools in order to help be productive on the project. It will be especially helpful when setting up the project as well.
-
 
 # Outlook
 

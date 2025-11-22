@@ -41,6 +41,7 @@
     ".git"
   ],
   "imports": {
+    "@dimforge/rapier3d-compat": "npm:@dimforge/rapier3d-compat@0.19.3",
     "three": "npm:three@^0.181.2",
     "vite": "npm:vite@7"
   },

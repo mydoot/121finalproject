@@ -1,11 +1,15 @@
 {
   "version": "5",
   "specifiers": {
+    "npm:@dimforge/rapier3d-compat@0.19.3": "0.19.3",
     "npm:three@*": "0.181.2",
     "npm:three@~0.181.2": "0.181.2",
     "npm:vite@7": "7.1.9_picomatch@4.0.3"
   },
   "npm": {
+    "@dimforge/rapier3d-compat@0.19.3": {
+      "integrity": "sha512-mMVdSj1PRTT108s9Swbu2GQOmHbn8kbJANRV5xfczL3s0T4vkgZAuoMRgvBzQcHanpKusbC0ZJj6z3mC3aj3vg=="
+    },
     "@esbuild/aix-ppc64@0.25.10": {
       "integrity": "sha512-0NFWnA+7l41irNuaSVlLfgNT12caWJVLzp5eAVhZ0z1qpxbockccEt3s+149rE64VUI3Ml2zt8Nv5JVc4QXTsw==",
       "os": ["aix"],
@@ -377,6 +381,7 @@
   },
   "workspace": {
     "dependencies": [
+      "npm:@dimforge/rapier3d-compat@0.19.3",
       "npm:three@~0.181.2",
       "npm:vite@7"
     ]

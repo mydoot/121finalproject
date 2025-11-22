@@ -16,9 +16,11 @@ class Sphere extends THREE.Mesh {
 class Player extends Sphere {
   #movementSpeed;
 
-  constructor({ width, height, depth }, speed) {
+  constructor({ width, height, depth, speed, rigidBody, world }) {
     super(width, height, depth)
+    this.world = world;
     this.#movementSpeed = speed;
+    this.body = rigidBody;
   }
 
   move(x, z) {
@@ -26,15 +28,40 @@ class Player extends Sphere {
     // We invoke the physics engine here
     const impulse = { x: x * this.#movementSpeed, y: 0, z: z * this.#movementSpeed };
 
-    // 2. Apply impulse (force) to the center of the body
-    // true = wake up the body if it's sleeping
+    this.body.setLinearDamping(2.0);
     this.body.applyImpulse(impulse, true);
   }
 
   jump() {
-    // Only jump if we are close to the ground (simplified check)
-    if (Math.abs(this.body.linvel().y) < 0.1) {
-      this.body.applyImpulse({ x: 0, y: 10, z: 0 }, true);
+    // A. Setup the Ray
+    // Start at the center of the ball
+    const translation = this.body.translation();
+    const origin = { x: translation.x, y: translation.y, z: translation.z };
+
+
+    // Shoot straight down
+    const direction = { x: 0, y: -1, z: 0 };
+    const ray = new RAPIER.Ray(origin, direction);
+
+
+    const maxToi = 1.1;
+    const solid = true; // Consider all colliders solid
+
+
+    const hit = this.world.castRay(
+      ray,
+      maxToi,
+      solid,
+      0xffffffff, // Default groups (hit everything)
+      null,
+      null,
+      this.body   // ray ignores player body
+    );
+
+    // D. The Check
+    if (hit) {
+      this.body.setLinearDamping(0.1);
+      this.body.applyImpulse({ x: 0, y: 35, z: 0 }, true);
     }
   }
 }
@@ -42,6 +69,13 @@ class Player extends Sphere {
 class Command {
   execute(actor) {
     return actor;
+  }
+}
+
+
+class JumpCommand extends Command {
+  execute(actor) {
+    actor.jump();
   }
 }
 
@@ -60,22 +94,32 @@ class InputHandler {
     return (key == check) ? true : false;
   }
 
-  Input(key) {
-    if (this.isPressed('KeyW', key)) {
-      console.log(`key ${key} pressed`);
+  Input() {
+
+    let x = 0;
+    let z = 0;
+
+    if (this.keys.has('KeyW')) {
+      z -= 1;
     }
-    else if (this.isPressed('KeyA', key)) {
-      console.log(`key ${key} pressed`);
+    if (this.keys.has('KeyA')) {
+      x -= 1;
     }
-    else if (this.isPressed('KeyS', key)) {
-      console.log(`key ${key} pressed`);
+    if (this.keys.has('KeyS')) {
+      z += 1;
     }
-    else if (this.isPressed('KeyD', key)) {
-      console.log(`key ${key} pressed`);
+    if (this.keys.has('KeyD')) {
+      x += 1;
     }
-    else if (this.isPressed('Space', key)) {
-      console.log(`key ${key} pressed`);
+    if (this.keys.has('Space')) {
+      return new JumpCommand();
     }
+
+    if (x !== 0 || z !== 0) {
+      return new MoveCommand(x, z);
+    }
+
+    return null;
   }
 
 }
@@ -91,13 +135,6 @@ class MoveCommand extends Command {
     actor.move(this.x, this.z);
   }
 }
-
-class JumpCommand extends Command {
-  execute(actor) {
-    actor.jump();
-  }
-}
-
 
 function notify(name) {
   observer.dispatchEvent(new Event(name));
@@ -115,7 +152,7 @@ async function runGame() {
   const gravity = { x: 0.0, y: -9.81, z: 0.0 };
   const world = new RAPIER.World(gravity);
 
-  const inputHandler = new InputHandler;
+  const inputHandler = new InputHandler();
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(
@@ -138,7 +175,8 @@ async function runGame() {
 
 
   const rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic()
-    .setTranslation(0.0, 5.0, 0.0); // Start 5 units up
+    .setTranslation(0.0, 5.0, 0.0)
+    .setLinearDamping(2.0); // Start 5 units up
   const rigidBody = world.createRigidBody(rigidBodyDesc);
 
   // Create a collider (shape) for the physics body
@@ -151,7 +189,11 @@ async function runGame() {
     width: 1,
     height: 32,
     depth: 16,
-  });
+    speed: 1,
+    rigidBody: rigidBody,
+    world: world
+  },
+  );
   /* const sphere = new Box({
     width: 1,
     height: 32,
@@ -161,26 +203,31 @@ async function runGame() {
   scene.add(player);
 
   const ground = new THREE.Mesh(
-    new THREE.BoxGeometry(10, 0.5, 15),
+    new THREE.BoxGeometry(50, 0.5, 40),
     new THREE.MeshStandardMaterial({ color: 0xF54927 }),
   );
   ground.receiveShadow = true;
   ground.position.y = -3;
   scene.add(ground);
 
+  const box = new THREE.Box3().setFromObject(ground);
+  const size = new THREE.Vector3();
+  box.getSize(size);
+
   // 1. Create a FIXED body (Mass = 0, it won't move)
   // We set the position to (0, 3, 0) to match the visual mesh
   const groundBodyDesc = RAPIER.RigidBodyDesc.fixed()
-    .setTranslation(0, ground.position.y, 0);
+    .setTranslation(ground.position.x, ground.position.y, ground.position.z);
 
   const groundBody = world.createRigidBody(groundBodyDesc);
 
-  // 2. Create the Collider shape
-  // IMPORTANT: Rapier takes "Half-Extents" (Half the size)
-  // Three.js Box: 5 (width), 0.5 (height), 15 (depth)
-  // Rapier Box:   2.5,       0.25,          7.5
-  const groundCollider = RAPIER.ColliderDesc.cuboid(2.5, 0.25, 7.5)
-    .setRestitution(0.7); // Add 70% bounciness
+  // 3. Create Collider using the calculated size
+  const groundCollider = RAPIER.ColliderDesc.cuboid(
+    size.x / 2,
+    size.y / 2,
+    size.z / 2
+  );
+
   world.createCollider(groundCollider, groundBody);
 
   const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
@@ -191,9 +238,9 @@ async function runGame() {
   camera.position.z = 10;
 
 
-  globalThis.addEventListener("keydown", (event) => {
+  /* globalThis.addEventListener("keydown", (event) => {
     inputHandler.Input(event.code);
-  })
+  }) */
 
   // 4. Start your loop ONLY after everything is ready
   function animate() {
@@ -205,6 +252,11 @@ async function runGame() {
 
     player.position.set(position.x, position.y, position.z);
     player.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
+
+    const command = inputHandler.Input()
+    if (command) {
+      command.execute(player);
+    }
 
     renderer.render(scene, camera);
   }

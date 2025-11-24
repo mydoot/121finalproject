@@ -22,24 +22,33 @@ async function loadLevel(scene, world, url) {
 
   if (jumpPad) {
     // 1. Create Body & Collider
-
     const targetPos = new THREE.Vector3();
     jumpPad.getWorldPosition(targetPos);
 
-    const padColliderDesc = RAPIER.ColliderDesc.cylinder(0.5, 2) // Height, Radius
-      .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS); // <--- CRITICAL
+    const padBodyDesc = RAPIER.RigidBodyDesc.fixed()
+      .setTranslation(targetPos.x, targetPos.y, targetPos.z);
+    const padBody = world.createRigidBody(padBodyDesc);
 
-    const padCollider = world.createCollider(padColliderDesc, jumpPad);
+
+    const padColliderDesc = RAPIER.ColliderDesc.cylinder(0.5, 2)
+      .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
+
+
+    const padCollider = world.createCollider(padColliderDesc, padBody);
 
     // 2. "Tag" the collider so we can recognize it later
     // We can attach custom properties directly to the Rapier object in JS
     padCollider.isLaunchPad = true;
+  } else {
+    console.log("doesn't exist!");
   }
 
   levelMesh.traverse((child) => {
     if (child.isMesh) {
       child.castShadow = true;
       child.receiveShadow = true;
+
+      if (child.name === "JumpPad") return;
 
       // --- PHYSICS GENERATION (FIXED) ---
 
@@ -295,13 +304,49 @@ async function runGame() {
 
   function animate() {
     requestAnimationFrame(animate);
-    world.step(); // Physics step
+    world.step(eventQueue);
 
     const position = rigidBody.translation();
     const rotation = rigidBody.rotation();
 
     player.position.set(position.x, position.y, position.z);
     player.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
+
+    eventQueue.drainCollisionEvents((handle1, handle2, started) => {
+      // 'started' is true when they touch, false when they separate.
+      if (!started) return;
+
+      // We don't know which handle is the player and which is the pad,
+      // so we get the actual Collider objects to check.
+      const col1 = world.getCollider(handle1);
+      const col2 = world.getCollider(handle2);
+
+      // Check Logic: Did the player hit the pad?
+      let playerBody = null;
+
+      // Case A: Col1 is Pad, Col2 is Player
+      if (col1.isLaunchPad && col2.parent() === player.body) {
+        playerBody = player.body;
+      }
+      // Case B: Col2 is Pad, Col1 is Player
+      else if (col2.isLaunchPad && col1.parent() === player.body) {
+        playerBody = player.body;
+      }
+
+      // 3. LAUNCH!
+      if (playerBody) {
+        console.log("BOING! Jump Pad Hit");
+
+        // 1. Reset Vertical Velocity
+        // If we don't do this, gravity might fight the jump (e.g. if falling fast)
+        const vel = playerBody.linvel();
+        playerBody.setLinvel({ x: vel.x, y: 0, z: vel.z }, true);
+
+        // 2. Apply Massive Upward Force
+        // Increase 'y' if it feels too weak
+        playerBody.applyImpulse({ x: 0, y: 100, z: 0 }, true);
+      }
+    });
 
     // Player Input
     const command = inputHandler.Input();

@@ -19,6 +19,7 @@ async function loadLevel(scene, world, url) {
 
   // 1. Find the object by the exact name you used in Blender
   const jumpPad = levelMesh.getObjectByName("JumpPad");
+  const goal = levelMesh.getObjectByName("Goal");
 
   if (jumpPad) {
     // 1. Create Body & Collider
@@ -38,7 +39,31 @@ async function loadLevel(scene, world, url) {
 
     // 2. "Tag" the collider so we can recognize it later
     // We can attach custom properties directly to the Rapier object in JS
-    padCollider.isLaunchPad = true;
+    padCollider.interactionType = 'jumppad';
+  } else {
+    console.log("doesn't exist!");
+  }
+
+  if (goal) {
+    // 1. Create Body & Collider
+    const targetPos = new THREE.Vector3();
+    goal.getWorldPosition(targetPos);
+
+    const goalBodyDesc = RAPIER.RigidBodyDesc.fixed()
+      .setTranslation(targetPos.x, targetPos.y, targetPos.z);
+    const goalBody = world.createRigidBody(goalBodyDesc);
+
+
+    const goalCollsiderDesc = RAPIER.ColliderDesc.cylinder(0.5, 2)
+      .setSensor(true)
+      .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
+
+
+    const goalCollider = world.createCollider(goalCollsiderDesc, goalBody);
+
+    // 2. "Tag" the collider so we can recognize it later
+    // We can attach custom properties directly to the Rapier object in JS
+    goalCollider.interactionType = 'goal';
   } else {
     console.log("doesn't exist!");
   }
@@ -82,6 +107,88 @@ async function loadLevel(scene, world, url) {
       world.createCollider(colliderDesc, rigidBody);
     }
   });
+}
+
+function createGameUI(renderer) {
+  // 1. Create a "Wrapper" to hold everything
+  // We attach this to the body, and move the renderer inside it
+  const gameContainer = document.createElement('div');
+  gameContainer.style.position = 'relative';
+  gameContainer.style.width = '100%';
+  gameContainer.style.height = '100%';
+  document.body.appendChild(gameContainer);
+
+  // Move the existing 3D Canvas into this wrapper
+  gameContainer.appendChild(renderer.domElement);
+
+  // 2. Create the UI Overlay Layer
+  const uiLayer = document.createElement('div');
+  Object.assign(uiLayer.style, {
+    position: 'absolute',
+    top: '0',
+    left: '0',
+    width: '100%',
+    height: '100%',
+    pointerEvents: 'none', // CRITICAL: Lets clicks pass through to the game
+    display: 'flex',
+    justifyContent: 'space-between', // Spreads items (Score Left, Button Right)
+    alignItems: 'flex-start',
+    padding: '20px',
+    boxSizing: 'border-box'
+
+  });
+  gameContainer.appendChild(uiLayer);
+
+
+  // 4. Create the Restart Button
+  const restartBtn = document.createElement('button');
+  restartBtn.innerText = "Restart Level";
+  Object.assign(restartBtn.style, {
+    pointerEvents: 'auto',
+    cursor: 'pointer',
+    padding: '10px 10px',
+    fontSize: '20px',
+    fontWeight: 'bold',
+    backgroundColor: '#6de9ffff',
+    color: 'white',
+    border: '2px solid white',
+    borderRadius: '8px',
+    boxShadow: '2px 2px 5px rgba(0,0,0,0.5)'
+  });
+
+  // Add Hover Effect logic
+  restartBtn.onmouseover = () => restartBtn.style.backgroundColor = '#0067acff';
+  restartBtn.onmouseout = () => restartBtn.style.backgroundColor = '#6de9ffff';
+
+  // Add Click Logic
+  restartBtn.onclick = () => {
+    console.log("Restart Clicked!");
+    globalThis.location.reload(); // Simple way to restart
+  };
+
+  uiLayer.appendChild(restartBtn);
+
+  const levelFinishUI = document.createElement('div');
+  levelFinishUI.innerText = "Completed Level";
+  Object.assign(levelFinishUI.style, {
+    position: 'relative',
+    right: '500px',
+    top: '345px',
+    color: 'white',
+    fontFamily: 'Arial, sans-serif',
+    fontSize: '100px',
+    fontWeight: 'bold',
+    backgroundColor: '#2afde19f',
+    textShadow: '2px 2px 0 #000', // Black outline for readability
+    userSelect: 'none' // Don't let user highlight the text
+  });
+  uiLayer.appendChild(levelFinishUI);
+
+  // 5. Return references so we can update them later
+  return {
+    levelFinishUI,
+    restartBtn
+  };
 }
 
 // Classes
@@ -243,6 +350,9 @@ async function runGame() {
   renderer.setSize(globalThis.innerWidth, globalThis.innerHeight);
   document.body.appendChild(renderer.domElement);
 
+  const ui = createGameUI(renderer);
+  ui.levelFinishUI.style.display = 'none';
+
   // Temp camera
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true; // Adds momentum/smoothness to the movement
@@ -313,38 +423,52 @@ async function runGame() {
     player.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
 
     eventQueue.drainCollisionEvents((handle1, handle2, started) => {
-      // 'started' is true when they touch, false when they separate.
       if (!started) return;
 
-      // We don't know which handle is the player and which is the pad,
-      // so we get the actual Collider objects to check.
       const col1 = world.getCollider(handle1);
       const col2 = world.getCollider(handle2);
 
-      // Check Logic: Did the player hit the pad?
-      let playerBody = null;
+      // --- 1. SORTING PHASE: Find Player & Other ---
+      let playerCollider = null;
+      let otherCollider = null;
 
-      // Case A: Col1 is Pad, Col2 is Player
-      if (col1.isLaunchPad && col2.parent() === player.body) {
-        playerBody = player.body;
+      // Check if Col1 is the player
+      if (col1.parent() === player.body) {
+        playerCollider = col1;
+        otherCollider = col2;
       }
-      // Case B: Col2 is Pad, Col1 is Player
-      else if (col2.isLaunchPad && col1.parent() === player.body) {
-        playerBody = player.body;
+      // Check if Col2 is the player
+      else if (col2.parent() === player.body) {
+        playerCollider = col2;
+        otherCollider = col1;
       }
 
-      // 3. LAUNCH!
-      if (playerBody) {
-        console.log("BOING! Jump Pad Hit");
+      // If the player wasn't involved in this collision, ignore it.
+      // (e.g., an enemy hitting a wall)
+      if (!playerCollider) return;
 
-        // 1. Reset Vertical Velocity
-        // If we don't do this, gravity might fight the jump (e.g. if falling fast)
-        const vel = playerBody.linvel();
-        playerBody.setLinvel({ x: vel.x, y: 0, z: vel.z }, true);
 
-        // 2. Apply Massive Upward Force
-        // Increase 'y' if it feels too weak
-        playerBody.applyImpulse({ x: 0, y: 100, z: 0 }, true);
+      // --- 2. ROUTING PHASE: Switch based on Type ---
+      // We check the custom string we added to the 'other' collider
+      switch (otherCollider.interactionType) {
+
+        case 'jumppad':
+          console.log("BOING!");
+          const vel = player.body.linvel();
+          player.body.setLinvel({ x: vel.x, y: 0, z: vel.z }, true);
+          player.body.applyImpulse({ x: 0, y: 100, z: 0 }, true);
+          break;
+
+        case 'goal':
+          console.log("LEVEL COMPLETE");
+          ui.levelFinishUI.style.display = 'block';
+          //loadNextLevel();
+          break;
+
+        default:
+          // Hit a normal wall or floor
+          // Do nothing (or play a 'thud' sound)
+          break;
       }
     });
 

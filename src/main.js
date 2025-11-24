@@ -1,6 +1,79 @@
 import RAPIER from "@dimforge/rapier3d-compat";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+
+import levelUrl from './level.glb?url';
+
+// Function to load a GLB Level
+async function loadLevel(scene, world, url) {
+  const loader = new GLTFLoader();
+  const gltf = await loader.loadAsync(url);
+  const levelMesh = gltf.scene;
+
+  // 1. Add Visuals to Scene
+  scene.add(levelMesh);
+
+  // 2. FORCE Three.js to calculate the final positions/scales of everything right now
+  levelMesh.updateMatrixWorld(true);
+
+  // 1. Find the object by the exact name you used in Blender
+  const jumpPad = levelMesh.getObjectByName("JumpPad");
+
+  if (jumpPad) {
+    // 1. Create Body & Collider
+
+    const targetPos = new THREE.Vector3();
+    jumpPad.getWorldPosition(targetPos);
+
+    const padColliderDesc = RAPIER.ColliderDesc.cylinder(0.5, 2) // Height, Radius
+      .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS); // <--- CRITICAL
+
+    const padCollider = world.createCollider(padColliderDesc, jumpPad);
+
+    // 2. "Tag" the collider so we can recognize it later
+    // We can attach custom properties directly to the Rapier object in JS
+    padCollider.isLaunchPad = true;
+  }
+
+  levelMesh.traverse((child) => {
+    if (child.isMesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+
+      // --- PHYSICS GENERATION (FIXED) ---
+
+      // A. Create a Fixed Body at (0,0,0)
+      // Since we are baking coordinates into World Space, the body stays at 0.
+      const rigidBodyDesc = RAPIER.RigidBodyDesc.fixed();
+      const rigidBody = world.createRigidBody(rigidBodyDesc);
+
+      // B. Clone the geometry so we don't mess up the visual mesh
+      const clonedGeometry = child.geometry.clone();
+
+      // C. BAKE the transformations (Scale, Rotation, Position)
+      // This turns local coordinates (relative to parent) into World Coordinates (absolute)
+      clonedGeometry.applyMatrix4(child.matrixWorld);
+
+      // D. Extract the transformed vertices
+      const vertices = clonedGeometry.attributes.position.array;
+
+      // E. Handle Indices (Safety Check from before)
+      let indices;
+      if (clonedGeometry.index) {
+        indices = clonedGeometry.index.array;
+      } else {
+        const vertexCount = clonedGeometry.attributes.position.count;
+        indices = new Uint32Array(vertexCount);
+        for (let i = 0; i < vertexCount; i++) indices[i] = i;
+      }
+
+      // F. Create the Collider
+      const colliderDesc = RAPIER.ColliderDesc.trimesh(vertices, indices);
+      world.createCollider(colliderDesc, rigidBody);
+    }
+  });
+}
 
 // Classes
 class Sphere extends THREE.Mesh {
@@ -136,17 +209,20 @@ function notify(name) {
 async function runGame() {
   // Must wait for rapier physics engine first
   await RAPIER.init();
-
   console.log("Rapier is ready. Starting game...");
+
+  const scene = new THREE.Scene();
+  const gravity = { x: 0.0, y: -9.81, z: 0.0 };
+  const world = new RAPIER.World(gravity);
 
   const observer = new EventTarget();
 
   const inputHandler = new InputHandler();
 
-  const gravity = { x: 0.0, y: -9.81, z: 0.0 };
-  const world = new RAPIER.World(gravity);
+  await loadLevel(scene, world, levelUrl);
 
-  const scene = new THREE.Scene();
+  const eventQueue = new RAPIER.EventQueue(true);
+
   const camera = new THREE.PerspectiveCamera(
     75,
     globalThis.innerWidth / globalThis.innerHeight,
@@ -185,7 +261,7 @@ async function runGame() {
   player.castShadow = true;
   scene.add(player);
 
-  // Create the ground mesh and add rigidbody collider
+  /* // Create the ground mesh and add rigidbody collider
   const ground = new THREE.Mesh(
     new THREE.BoxGeometry(50, 0.5, 40),
     new THREE.MeshStandardMaterial({ color: 0xF54927 }),
@@ -207,7 +283,7 @@ async function runGame() {
     size.y / 2,
     size.z / 2,
   );
-  world.createCollider(groundCollider, groundBody);
+  world.createCollider(groundCollider, groundBody); */
 
   // Simple lighting
   const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);

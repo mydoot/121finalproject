@@ -35,8 +35,6 @@ async function loadLevel(scene, world, url) {
 
     const padCollider = world.createCollider(padColliderDesc, padBody);
 
-    // 2. "Tag" the collider so we can recognize it later
-    // We can attach custom properties directly to the Rapier object in JS
     padCollider.interactionType = "jumppad";
   } else {
     console.log("doesn't exist!");
@@ -57,8 +55,6 @@ async function loadLevel(scene, world, url) {
 
     const goalCollider = world.createCollider(goalCollsiderDesc, goalBody);
 
-    // 2. "Tag" the collider so we can recognize it later
-    // We can attach custom properties directly to the Rapier object in JS
     goalCollider.interactionType = "goal";
   } else {
     console.log("doesn't exist!");
@@ -75,22 +71,15 @@ async function loadLevel(scene, world, url) {
 
       // --- PHYSICS GENERATION (FIXED) ---
 
-      // A. Create a Fixed Body at (0,0,0)
-      // Since we are baking coordinates into World Space, the body stays at 0.
       const rigidBodyDesc = RAPIER.RigidBodyDesc.fixed();
       const rigidBody = world.createRigidBody(rigidBodyDesc);
 
-      // B. Clone the geometry so we don't mess up the visual mesh
       const clonedGeometry = child.geometry.clone();
 
-      // C. BAKE the transformations (Scale, Rotation, Position)
-      // This turns local coordinates (relative to parent) into World Coordinates (absolute)
       clonedGeometry.applyMatrix4(child.matrixWorld);
 
-      // D. Extract the transformed vertices
       const vertices = clonedGeometry.attributes.position.array;
 
-      // E. Handle Indices (Safety Check from before)
       let indices;
       if (clonedGeometry.index) {
         indices = clonedGeometry.index.array;
@@ -108,8 +97,6 @@ async function loadLevel(scene, world, url) {
 }
 
 function createGameUI(renderer) {
-  // 1. Create a "Wrapper" to hold everything
-  // We attach this to the body, and move the renderer inside it
   const gameContainer = document.createElement("div");
   gameContainer.style.position = "relative";
   gameContainer.style.width = "100%";
@@ -127,9 +114,9 @@ function createGameUI(renderer) {
     left: "0",
     width: "100%",
     height: "100%",
-    pointerEvents: "none", // CRITICAL: Lets clicks pass through to the game
+    pointerEvents: "none",
     display: "flex",
-    justifyContent: "space-between", // Spreads items (Score Left, Button Right)
+    justifyContent: "space-between",
     alignItems: "flex-start",
     padding: "20px",
     boxSizing: "border-box",
@@ -159,7 +146,7 @@ function createGameUI(renderer) {
   // Add Click Logic
   restartBtn.onclick = () => {
     console.log("Restart Clicked!");
-    globalThis.location.reload(); // Simple way to restart
+    globalThis.location.reload();
   };
 
   uiLayer.appendChild(restartBtn);
@@ -175,8 +162,8 @@ function createGameUI(renderer) {
     fontSize: "100px",
     fontWeight: "bold",
     backgroundColor: "#2afde19f",
-    textShadow: "2px 2px 0 #000", // Black outline for readability
-    userSelect: "none", // Don't let user highlight the text
+    textShadow: "2px 2px 0 #000",
+    userSelect: "none",
   });
   uiLayer.appendChild(levelFinishUI);
 
@@ -376,30 +363,6 @@ async function runGame() {
   player.castShadow = true;
   scene.add(player);
 
-  /* // Create the ground mesh and add rigidbody collider
-  const ground = new THREE.Mesh(
-    new THREE.BoxGeometry(50, 0.5, 40),
-    new THREE.MeshStandardMaterial({ color: 0xF54927 }),
-  );
-  ground.receiveShadow = true;
-  ground.position.y = -3;
-  scene.add(ground);
-
-  const box = new THREE.Box3().setFromObject(ground);
-  const size = new THREE.Vector3();
-  box.getSize(size);
-
-  const groundBodyDesc = RAPIER.RigidBodyDesc.fixed()
-    .setTranslation(ground.position.x, ground.position.y, ground.position.z);
-  const groundBody = world.createRigidBody(groundBodyDesc);
-
-  const groundCollider = RAPIER.ColliderDesc.cuboid(
-    size.x / 2,
-    size.y / 2,
-    size.z / 2,
-  );
-  world.createCollider(groundCollider, groundBody); */
-
   // Simple lighting
   const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
   directionalLight.position.z = 1;
@@ -442,26 +405,28 @@ async function runGame() {
       // (e.g., an enemy hitting a wall)
       if (!playerCollider) return;
 
-      // --- 2. ROUTING PHASE: Switch based on Type ---
       // We check the custom string we added to the 'other' collider
       switch (otherCollider.interactionType) {
-        case "jumppad":
+        case "jumppad": {
           console.log("BOING!");
           const vel = player.body.linvel();
           player.body.setLinvel({ x: vel.x, y: 0, z: vel.z }, true);
           player.body.applyImpulse({ x: 0, y: 100, z: 0 }, true);
           break;
+        }
 
-        case "goal":
+        case "goal": {
           console.log("LEVEL COMPLETE");
           ui.levelFinishUI.style.display = "block";
           //loadNextLevel();
           break;
+        }
 
-        default:
+        default: {
           // Hit a normal wall or floor
           // Do nothing (or play a 'thud' sound)
           break;
+        }
       }
     });
 

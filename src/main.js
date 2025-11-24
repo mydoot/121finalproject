@@ -30,16 +30,14 @@ async function loadLevel(scene, world, url) {
       .setTranslation(targetPos.x, targetPos.y, targetPos.z);
     const padBody = world.createRigidBody(padBodyDesc);
 
-
     const padColliderDesc = RAPIER.ColliderDesc.cylinder(0.5, 2)
       .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
-
 
     const padCollider = world.createCollider(padColliderDesc, padBody);
 
     // 2. "Tag" the collider so we can recognize it later
     // We can attach custom properties directly to the Rapier object in JS
-    padCollider.interactionType = 'jumppad';
+    padCollider.interactionType = "jumppad";
   } else {
     console.log("doesn't exist!");
   }
@@ -53,17 +51,15 @@ async function loadLevel(scene, world, url) {
       .setTranslation(targetPos.x, targetPos.y, targetPos.z);
     const goalBody = world.createRigidBody(goalBodyDesc);
 
-
     const goalCollsiderDesc = RAPIER.ColliderDesc.cylinder(0.5, 2)
       .setSensor(true)
       .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
-
 
     const goalCollider = world.createCollider(goalCollsiderDesc, goalBody);
 
     // 2. "Tag" the collider so we can recognize it later
     // We can attach custom properties directly to the Rapier object in JS
-    goalCollider.interactionType = 'goal';
+    goalCollider.interactionType = "goal";
   } else {
     console.log("doesn't exist!");
   }
@@ -74,6 +70,8 @@ async function loadLevel(scene, world, url) {
       child.receiveShadow = true;
 
       if (child.name === "JumpPad") return;
+
+      if (child.name === "Goal") return;
 
       // --- PHYSICS GENERATION (FIXED) ---
 
@@ -112,53 +110,51 @@ async function loadLevel(scene, world, url) {
 function createGameUI(renderer) {
   // 1. Create a "Wrapper" to hold everything
   // We attach this to the body, and move the renderer inside it
-  const gameContainer = document.createElement('div');
-  gameContainer.style.position = 'relative';
-  gameContainer.style.width = '100%';
-  gameContainer.style.height = '100%';
+  const gameContainer = document.createElement("div");
+  gameContainer.style.position = "relative";
+  gameContainer.style.width = "100%";
+  gameContainer.style.height = "100%";
   document.body.appendChild(gameContainer);
 
   // Move the existing 3D Canvas into this wrapper
   gameContainer.appendChild(renderer.domElement);
 
   // 2. Create the UI Overlay Layer
-  const uiLayer = document.createElement('div');
+  const uiLayer = document.createElement("div");
   Object.assign(uiLayer.style, {
-    position: 'absolute',
-    top: '0',
-    left: '0',
-    width: '100%',
-    height: '100%',
-    pointerEvents: 'none', // CRITICAL: Lets clicks pass through to the game
-    display: 'flex',
-    justifyContent: 'space-between', // Spreads items (Score Left, Button Right)
-    alignItems: 'flex-start',
-    padding: '20px',
-    boxSizing: 'border-box'
-
+    position: "absolute",
+    top: "0",
+    left: "0",
+    width: "100%",
+    height: "100%",
+    pointerEvents: "none", // CRITICAL: Lets clicks pass through to the game
+    display: "flex",
+    justifyContent: "space-between", // Spreads items (Score Left, Button Right)
+    alignItems: "flex-start",
+    padding: "20px",
+    boxSizing: "border-box",
   });
   gameContainer.appendChild(uiLayer);
 
-
   // 4. Create the Restart Button
-  const restartBtn = document.createElement('button');
+  const restartBtn = document.createElement("button");
   restartBtn.innerText = "Restart Level";
   Object.assign(restartBtn.style, {
-    pointerEvents: 'auto',
-    cursor: 'pointer',
-    padding: '10px 10px',
-    fontSize: '20px',
-    fontWeight: 'bold',
-    backgroundColor: '#6de9ffff',
-    color: 'white',
-    border: '2px solid white',
-    borderRadius: '8px',
-    boxShadow: '2px 2px 5px rgba(0,0,0,0.5)'
+    pointerEvents: "auto",
+    cursor: "pointer",
+    padding: "10px 10px",
+    fontSize: "20px",
+    fontWeight: "bold",
+    backgroundColor: "#6de9ffff",
+    color: "white",
+    border: "2px solid white",
+    borderRadius: "8px",
+    boxShadow: "2px 2px 5px rgba(0,0,0,0.5)",
   });
 
   // Add Hover Effect logic
-  restartBtn.onmouseover = () => restartBtn.style.backgroundColor = '#0067acff';
-  restartBtn.onmouseout = () => restartBtn.style.backgroundColor = '#6de9ffff';
+  restartBtn.onmouseover = () => restartBtn.style.backgroundColor = "#0067acff";
+  restartBtn.onmouseout = () => restartBtn.style.backgroundColor = "#6de9ffff";
 
   // Add Click Logic
   restartBtn.onclick = () => {
@@ -168,26 +164,26 @@ function createGameUI(renderer) {
 
   uiLayer.appendChild(restartBtn);
 
-  const levelFinishUI = document.createElement('div');
+  const levelFinishUI = document.createElement("div");
   levelFinishUI.innerText = "Completed Level";
   Object.assign(levelFinishUI.style, {
-    position: 'relative',
-    right: '500px',
-    top: '345px',
-    color: 'white',
-    fontFamily: 'Arial, sans-serif',
-    fontSize: '100px',
-    fontWeight: 'bold',
-    backgroundColor: '#2afde19f',
-    textShadow: '2px 2px 0 #000', // Black outline for readability
-    userSelect: 'none' // Don't let user highlight the text
+    position: "relative",
+    right: "500px",
+    top: "345px",
+    color: "white",
+    fontFamily: "Arial, sans-serif",
+    fontSize: "100px",
+    fontWeight: "bold",
+    backgroundColor: "#2afde19f",
+    textShadow: "2px 2px 0 #000", // Black outline for readability
+    userSelect: "none", // Don't let user highlight the text
   });
   uiLayer.appendChild(levelFinishUI);
 
   // 5. Return references so we can update them later
   return {
     levelFinishUI,
-    restartBtn
+    restartBtn,
   };
 }
 
@@ -351,7 +347,7 @@ async function runGame() {
   document.body.appendChild(renderer.domElement);
 
   const ui = createGameUI(renderer);
-  ui.levelFinishUI.style.display = 'none';
+  ui.levelFinishUI.style.display = "none";
 
   // Temp camera
   const controls = new OrbitControls(camera, renderer.domElement);
@@ -436,8 +432,7 @@ async function runGame() {
       if (col1.parent() === player.body) {
         playerCollider = col1;
         otherCollider = col2;
-      }
-      // Check if Col2 is the player
+      } // Check if Col2 is the player
       else if (col2.parent() === player.body) {
         playerCollider = col2;
         otherCollider = col1;
@@ -447,21 +442,19 @@ async function runGame() {
       // (e.g., an enemy hitting a wall)
       if (!playerCollider) return;
 
-
       // --- 2. ROUTING PHASE: Switch based on Type ---
       // We check the custom string we added to the 'other' collider
       switch (otherCollider.interactionType) {
-
-        case 'jumppad':
+        case "jumppad":
           console.log("BOING!");
           const vel = player.body.linvel();
           player.body.setLinvel({ x: vel.x, y: 0, z: vel.z }, true);
           player.body.applyImpulse({ x: 0, y: 100, z: 0 }, true);
           break;
 
-        case 'goal':
+        case "goal":
           console.log("LEVEL COMPLETE");
-          ui.levelFinishUI.style.display = 'block';
+          ui.levelFinishUI.style.display = "block";
           //loadNextLevel();
           break;
 

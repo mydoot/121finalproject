@@ -1,9 +1,9 @@
 import RAPIER from "@dimforge/rapier3d-compat";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
-import levelUrl from './level.glb?url';
+import levelUrl from "./level.glb?url";
 
 // Function to load a GLB Level
 async function loadLevel(scene, world, url) {

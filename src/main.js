@@ -228,11 +228,30 @@ function createGameUI(renderer) {
   });
   uiLayer.appendChild(levelFinishUI);
 
+  // Inventory UI // fourth commit - inventory UI
+  const inventoryUI = document.createElement("div");
+  Object.assign(inventoryUI.style, {
+    position: "absolute",
+    top: "20px",
+    right: "20px",
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    color: "white",
+    padding: "15px",
+    borderRadius: "8px",
+    fontFamily: "Arial, sans-serif",
+    fontSize: "16px",
+    minWidth: "150px",
+    pointerEvents: "none",
+  });
+  inventoryUI.innerHTML = "<strong>Inventory:</strong><br><span id='inventory-items'>Empty</span>";
+  gameContainer.appendChild(inventoryUI); // fourth commit - inventory UI
+
 
   // 5. Return references so we can update them later
   return {
     levelFinishUI,
-    restartBtn
+    restartBtn,
+    inventoryUI
   };
 }
 
@@ -389,6 +408,17 @@ function removeFromInventory(itemType) {
   }
 }
 
+function updateInventoryUI() {
+  const inventoryItemsSpan = document.getElementById("inventory-items");
+  if (inventoryItemsSpan) {
+    if (inventory.length === 0) {
+      inventoryItemsSpan.innerText = "Empty";
+    } else {
+      inventoryItemsSpan.innerText = inventory.join(", ");
+    }
+  }
+} // fourth commit - inventory functions
+
 
 
 // Function to switch scenes
@@ -516,6 +546,23 @@ async function runGame() {
     }
   }
 
+  function handleObjectInteraction(object) { // fourth commit - pick up items
+    console.log(`Interacted with: ${object.userData.itemType}`);
+
+    // Add to inventory
+    addToInventory(object.userData.itemType);
+
+    // Remove from scene
+    if (object.parent) {
+      object.parent.remove(object);
+    }
+
+    // Remove from interactable objects array
+    const index = interactableObjects.indexOf(object);
+    if (index > -1) {
+      interactableObjects.splice(index, 1);
+    }
+  } // fourth commit - pick up items
 
   globalThis.addEventListener("click", onObjectClick);
   //raycasting setup

@@ -5,6 +5,21 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 import levelUrl from "./level.glb?url";
 
+// Scene Management/ second commit
+let currentScene = "room1";
+const scenes = {
+  room1: {
+    url: levelUrl,
+    startPos: { x: 0, y: 5, z: 0 },
+  },
+  room2: {
+    url: levelUrl, // For now using same level, can change later
+    startPos: { x: 0, y: 5, z: 10 },
+  },
+};//second commit
+
+
+
 // Function to load a GLB Level
 async function loadLevel(scene, world, url) {
   const loader = new GLTFLoader();
@@ -60,6 +75,36 @@ async function loadLevel(scene, world, url) {
     console.log("doesn't exist!");
   }
 
+  // Find all doors in the level // second commit - door detection
+  const doors = [];
+  levelMesh.traverse((obj) => {
+    if (obj.name && obj.name.startsWith("Door")) {
+      doors.push(obj);
+    }
+  });
+
+  // Create door colliders
+  doors.forEach((door) => {
+    const targetPos = new THREE.Vector3();
+    door.getWorldPosition(targetPos);
+
+    const doorBodyDesc = RAPIER.RigidBodyDesc.fixed()
+      .setTranslation(targetPos.x, targetPos.y, targetPos.z);
+    const doorBody = world.createRigidBody(doorBodyDesc);
+
+    const doorColliderDesc = RAPIER.ColliderDesc.cuboid(2, 3, 0.5)
+      .setSensor(true)
+      .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
+
+    const doorCollider = world.createCollider(doorColliderDesc, doorBody);
+
+    // Extract destination from door name (e.g., "Door_room2" -> "room2")
+    const destination = door.name.split("_")[1] || "room2";
+    doorCollider.interactionType = "door";
+    doorCollider.destination = destination;
+  }); // second commit - door detection
+
+
   levelMesh.traverse((child) => {
     if (child.isMesh) {
       child.castShadow = true;
@@ -68,6 +113,8 @@ async function loadLevel(scene, world, url) {
       if (child.name === "JumpPad") return;
 
       if (child.name === "Goal") return;
+
+      if (child.name && child.name.startsWith("Door")) return; // second commit - skip doors in physics
 
       // --- PHYSICS GENERATION (FIXED) ---
 
@@ -167,10 +214,11 @@ function createGameUI(renderer) {
   });
   uiLayer.appendChild(levelFinishUI);
 
+
   // 5. Return references so we can update them later
   return {
     levelFinishUI,
-    restartBtn,
+    restartBtn
   };
 }
 
@@ -305,6 +353,58 @@ function notify(name) {
   observer.dispatchEvent(new Event(name));
 }
 
+// Global game state for scene switching // second commit - scene switching function
+let gameState = null;
+
+// Inventory functions // fourth commit - inventory functions
+function addToInventory(itemType) {
+  inventory.push(itemType);
+  updateInventoryUI();
+  console.log(`Added ${itemType} to inventory. Total items: ${inventory.length}`);
+}
+
+function hasItem(itemType) {
+  return inventory.includes(itemType);
+}
+
+function removeFromInventory(itemType) {
+  const index = inventory.indexOf(itemType);
+  if (index > -1) {
+    inventory.splice(index, 1);
+    updateInventoryUI();
+  }
+}
+
+
+
+// Function to switch scenes
+function switchScene(destination) {
+  if (!gameState) return;
+
+  console.log(`Switching to ${destination}`);
+  currentScene = destination;
+
+
+  // Clear current scene
+  while (gameState.scene.children.length > 0) {
+    gameState.scene.remove(gameState.scene.children[0]);
+  }
+
+  // Clear physics world
+  gameState.world.bodies.forEach((body) => {
+    gameState.world.removeRigidBody(body);
+  });
+
+  // Reset player position
+  const newStartPos = scenes[destination].startPos;
+  gameState.player.body.setTranslation(newStartPos, true);
+  gameState.player.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+  gameState.player.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+
+  // Load new scene
+  loadLevel(gameState.scene, gameState.world, scenes[destination].url);
+} // second commit - scene switching function
+
 async function runGame() {
   // Must wait for rapier physics engine first
   await RAPIER.init();
@@ -362,6 +462,41 @@ async function runGame() {
   });
   player.castShadow = true;
   scene.add(player);
+
+  // Initialize global game state for scene switching // second commit - initialize gameState
+  gameState = {
+    scene: scene,
+    world: world,
+    player: player,
+    camera: camera,
+    renderer: renderer,
+  }; // second commit - initialize gameState
+
+
+  function onObjectClick(event) {
+    // Calculate mouse position in normalized device coordinates (-1 to +1)
+    mouse.x = (event.clientX / globalThis.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / globalThis.innerHeight) * 2 + 1;
+
+    // Update the raycaster with camera and mouse position
+    raycaster.setFromCamera(mouse, camera);
+
+    // Check for intersections with interactable objects
+    const intersects = raycaster.intersectObjects(interactableObjects, true);
+
+    if (intersects.length > 0) {
+      // Find the first interactable object in the hierarchy
+      let clickedObject = intersects[0].object;
+      while (clickedObject && !clickedObject.userData.interactable) {
+        clickedObject = clickedObject.parent;
+      }
+
+      if (clickedObject && clickedObject.userData.interactable) {
+        handleObjectInteraction(clickedObject);
+      }
+    }
+  }
+
 
   // Simple lighting
   const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
@@ -421,6 +556,12 @@ async function runGame() {
           //loadNextLevel();
           break;
         }
+
+        case "door": { // second commit - door collision handling
+          console.log(`Entering door to ${otherCollider.destination}`);
+          switchScene(otherCollider.destination);
+          break;
+        } // second commit - door collision handling
 
         default: {
           // Hit a normal wall or floor

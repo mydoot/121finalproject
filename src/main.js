@@ -19,6 +19,11 @@ const scenes = {
 };//second commit
 
 
+// Interactable objects registry 
+let interactableObjects = [];
+
+// Inventory system 
+let inventory = [];
 
 // Function to load a GLB Level
 async function loadLevel(scene, world, url) {
@@ -104,6 +109,15 @@ async function loadLevel(scene, world, url) {
     doorCollider.destination = destination;
   }); // second commit - door detection
 
+  // Find all interactable items // third commit - find interactable objects
+  interactableObjects = [];
+  levelMesh.traverse((obj) => {
+    if (obj.name && obj.name.startsWith("Item_")) {
+      obj.userData.itemType = obj.name.split("_")[1] || "unknown";
+      obj.userData.interactable = true;
+      interactableObjects.push(obj);
+    }
+  }); // third commit - find interactable objects
 
   levelMesh.traverse((child) => {
     if (child.isMesh) {
@@ -384,6 +398,8 @@ function switchScene(destination) {
   console.log(`Switching to ${destination}`);
   currentScene = destination;
 
+  // Clear interactable objects // third commit - clear interactables on scene switch
+  interactableObjects = []; // third commit - clear interactables on scene switch
 
   // Clear current scene
   while (gameState.scene.children.length > 0) {
@@ -472,6 +488,9 @@ async function runGame() {
     renderer: renderer,
   }; // second commit - initialize gameState
 
+  // Object interaction with raycasting // third commit - raycasting setup
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
 
   function onObjectClick(event) {
     // Calculate mouse position in normalized device coordinates (-1 to +1)
@@ -497,6 +516,9 @@ async function runGame() {
     }
   }
 
+
+  globalThis.addEventListener("click", onObjectClick);
+  //raycasting setup
 
   // Simple lighting
   const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);

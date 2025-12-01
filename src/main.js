@@ -82,9 +82,13 @@ async function loadLevel(scene, world, url) {
 
   // Find all doors in the level // second commit - door detection
   const doors = [];
+  const lockedDoors = []; // fifth commit - locked doors
   levelMesh.traverse((obj) => {
-    if (obj.name && obj.name.startsWith("Door")) {
+    if (obj.name && obj.name.startsWith("Door_")) {
       doors.push(obj);
+    }
+    if (obj.name && obj.name.startsWith("LockedDoor_")) { // fifth commit - locked doors
+      lockedDoors.push(obj);
     }
   });
 
@@ -109,6 +113,32 @@ async function loadLevel(scene, world, url) {
     doorCollider.destination = destination;
   }); // second commit - door detection
 
+  // Create locked door colliders // fifth commit - locked door setup
+  lockedDoors.forEach((door) => {
+    const targetPos = new THREE.Vector3();
+    door.getWorldPosition(targetPos);
+
+    const doorBodyDesc = RAPIER.RigidBodyDesc.fixed()
+      .setTranslation(targetPos.x, targetPos.y, targetPos.z);
+    const doorBody = world.createRigidBody(doorBodyDesc);
+
+    const doorColliderDesc = RAPIER.ColliderDesc.cuboid(2, 3, 0.5)
+      .setSensor(true)
+      .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
+
+    const doorCollider = world.createCollider(doorColliderDesc, doorBody);
+
+    // Extract required item and destination from door name
+    // Format: "LockedDoor_key_room2" -> requires "key", leads to "room2"
+    const parts = door.name.split("_");
+    const requiredItem = parts[1] || "key";
+    const destination = parts[2] || "room2";
+
+    doorCollider.interactionType = "lockeddoor";
+    doorCollider.requiredItem = requiredItem;
+    doorCollider.destination = destination;
+  }); // fifth commit - locked door setup
+
   // Find all interactable items // third commit - find interactable objects
   interactableObjects = [];
   levelMesh.traverse((obj) => {
@@ -129,6 +159,8 @@ async function loadLevel(scene, world, url) {
       if (child.name === "Goal") return;
 
       if (child.name && child.name.startsWith("Door")) return; // second commit - skip doors in physics
+
+      if (child.name && child.name.startsWith("LockedDoor")) return; // fifth commit - skip locked doors in physics
 
       // --- PHYSICS GENERATION (FIXED) ---
 
@@ -246,12 +278,32 @@ function createGameUI(renderer) {
   inventoryUI.innerHTML = "<strong>Inventory:</strong><br><span id='inventory-items'>Empty</span>";
   gameContainer.appendChild(inventoryUI); // fourth commit - inventory UI
 
+  // Message UI for locked doors // fifth commit - locked door message UI
+  const messageUI = document.createElement("div");
+  Object.assign(messageUI.style, {
+    position: "absolute",
+    bottom: "20px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    backgroundColor: "rgba(255, 0, 0, 0.8)",
+    color: "white",
+    padding: "15px 30px",
+    borderRadius: "8px",
+    fontFamily: "Arial, sans-serif",
+    fontSize: "18px",
+    fontWeight: "bold",
+    display: "none",
+    pointerEvents: "none",
+  });
+  gameContainer.appendChild(messageUI); // fifth commit - locked door message UI
+
 
   // 5. Return references so we can update them later
   return {
     levelFinishUI,
     restartBtn,
-    inventoryUI
+    inventoryUI,
+    messageUI
   };
 }
 
@@ -389,6 +441,19 @@ function notify(name) {
 // Global game state for scene switching // second commit - scene switching function
 let gameState = null;
 
+// Message display function // fifth commit - message display
+function showMessage(text, duration = 2000) {
+  const messageUI = gameState?.messageUI;
+  if (!messageUI) return;
+
+  messageUI.innerText = text;
+  messageUI.style.display = "block";
+
+  setTimeout(() => {
+    messageUI.style.display = "none";
+  }, duration);
+} // fifth commit - message display
+
 // Inventory functions // fourth commit - inventory functions
 function addToInventory(itemType) {
   inventory.push(itemType);
@@ -516,6 +581,7 @@ async function runGame() {
     player: player,
     camera: camera,
     renderer: renderer,
+    messageUI: ui.messageUI
   }; // second commit - initialize gameState
 
   // Object interaction with raycasting // third commit - raycasting setup
@@ -619,18 +685,38 @@ async function runGame() {
           break;
         }
 
-        case "goal": {
-          console.log("LEVEL COMPLETE");
+        case "goal": { // sixth commit - conclusive ending
+          console.log("GAME COMPLETE - YOU WIN!");
+          gameEnded = true;
           ui.levelFinishUI.style.display = "block";
-          //loadNextLevel();
+
+          // Stop the player
+          player.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+          player.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
           break;
-        }
+        } // sixth commit - conclusive ending
 
         case "door": { // second commit - door collision handling
           console.log(`Entering door to ${otherCollider.destination}`);
           switchScene(otherCollider.destination);
           break;
         } // second commit - door collision handling
+
+        case "lockeddoor": { // fifth commit - locked door collision
+          const requiredItem = otherCollider.requiredItem;
+          const destination = otherCollider.destination;
+
+          if (hasItem(requiredItem)) {
+            console.log(`Unlocked door with ${requiredItem}! Going to ${destination}`);
+            showMessage(`Door unlocked with ${requiredItem}!`, 1500);
+            removeFromInventory(requiredItem); // Use up the item
+            switchScene(destination);
+          } else {
+            console.log(`Door locked! Need: ${requiredItem}`);
+            showMessage(`Locked! Need: ${requiredItem}`, 2000);
+          }
+          break;
+        } // fifth commit - locked door collision
 
         default: {
           // Hit a normal wall or floor

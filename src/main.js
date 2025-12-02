@@ -23,7 +23,10 @@ const scenes = {
 let interactableObjects = [];
 
 // Inventory system 
-let inventory = [];
+const inventory = [];
+
+// flag for game end state
+let gameEnded = false;
 
 // Function to load a GLB Level
 async function loadLevel(scene, world, url) {
@@ -244,21 +247,56 @@ function createGameUI(renderer) {
 
   uiLayer.appendChild(restartBtn);
 
+  //updated ending screen
   const levelFinishUI = document.createElement("div");
-  levelFinishUI.innerText = "Completed Level";
+  levelFinishUI.innerHTML = `
+    <div style="text-align: center;">
+      <div style="font-size: 80px; margin-bottom: 20px;">🎉 Victory! 🎉</div>
+      <div style="font-size: 40px; margin-bottom: 30px;">You completed the game!</div>
+      <button id="play-again-btn" style="
+        padding: 15px 40px;
+        font-size: 24px;
+        font-weight: bold;
+        background-color: #6de9ffff;
+        color: white;
+        border: 3px solid white;
+        border-radius: 10px;
+        cursor: pointer;
+        box-shadow: 3px 3px 10px rgba(0,0,0,0.5);
+      ">Play Again</button>
+    </div>
+  `;
   Object.assign(levelFinishUI.style, {
-    position: "relative",
-    right: "500px",
-    top: "345px",
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    transform: "translate(-50%, -50%)",
     color: "white",
     fontFamily: "Arial, sans-serif",
-    fontSize: "100px",
     fontWeight: "bold",
-    backgroundColor: "#2afde19f",
+    backgroundColor: "rgba(46, 253, 225, 0.95)",
     textShadow: "2px 2px 0 #000",
     userSelect: "none",
+    padding: "50px",
+    borderRadius: "20px",
+    border: "5px solid white",
+    pointerEvents: "auto",
+    zIndex: "1000",
   });
   uiLayer.appendChild(levelFinishUI);
+
+  // Play Again button handler // sixth commit - play again button
+  setTimeout(() => {
+    const playAgainBtn = document.getElementById("play-again-btn");
+    if (playAgainBtn) {
+      playAgainBtn.onmouseover = () => playAgainBtn.style.backgroundColor = "#0067acff";
+      playAgainBtn.onmouseout = () => playAgainBtn.style.backgroundColor = "#6de9ffff";
+      playAgainBtn.onclick = () => {
+        console.log("Play Again Clicked!");
+        globalThis.location.reload();
+      };
+    }
+  }, 100); // sixth commit - play again button
 
   // Inventory UI // fourth commit - inventory UI
   const inventoryUI = document.createElement("div");
@@ -589,6 +627,8 @@ async function runGame() {
   const mouse = new THREE.Vector2();
 
   function onObjectClick(event) {
+    if (gameEnded) return; //functionality for the game end state
+
     // Calculate mouse position in normalized device coordinates (-1 to +1)
     mouse.x = (event.clientX / globalThis.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / globalThis.innerHeight) * 2 + 1;
@@ -685,7 +725,7 @@ async function runGame() {
           break;
         }
 
-        case "goal": { // sixth commit - conclusive ending
+        case "goal": {
           console.log("GAME COMPLETE - YOU WIN!");
           gameEnded = true;
           ui.levelFinishUI.style.display = "block";
@@ -694,7 +734,7 @@ async function runGame() {
           player.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
           player.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
           break;
-        } // sixth commit - conclusive ending
+        }
 
         case "door": { // second commit - door collision handling
           console.log(`Entering door to ${otherCollider.destination}`);
@@ -726,11 +766,13 @@ async function runGame() {
       }
     });
 
-    // Player Input
-    const command = inputHandler.Input();
-    if (command) {
-      command.execute(player);
-    }
+    // Player Input // sixth commit - disable input when game ends
+    if (!gameEnded) {
+      const command = inputHandler.Input();
+      if (command) {
+        command.execute(player);
+      }
+    } // sixth commit - disable input when game ends
 
     renderer.render(scene, camera);
   }

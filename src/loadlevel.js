@@ -97,13 +97,29 @@ export async function loadLevel(scene, world, url) {
     const targetPos = new THREE.Vector3();
     door.getWorldPosition(targetPos);
 
+    const targetRot = new THREE.Quaternion();
+    door.getWorldQuaternion(targetRot);
+
+    const targetScale = new THREE.Vector3();
+    door.getWorldScale(targetScale);
+
     const doorBodyDesc = RAPIER.RigidBodyDesc.fixed()
-      .setTranslation(targetPos.x, targetPos.y, targetPos.z);
+      .setTranslation(targetPos.x, targetPos.y, targetPos.z)
+      .setRotation({
+        x: targetRot.x,
+        y: targetRot.y,
+        z: targetRot.z,
+        w: targetRot.w,
+      });
     const doorBody = world.createRigidBody(doorBodyDesc);
 
-    const doorColliderDesc = RAPIER.ColliderDesc.cuboid(2, 3, 0.5)
-      .setSensor(true)
-      .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
+    // Use the door's actual scale for the collider
+    const doorColliderDesc = RAPIER.ColliderDesc.cuboid(
+      targetScale.x,
+      targetScale.y,
+      targetScale.z,
+    ).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
+    // Solid door - blocks player until unlocked
 
     const doorCollider = world.createCollider(doorColliderDesc, doorBody);
 

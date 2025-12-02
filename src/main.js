@@ -3,21 +3,22 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 import levelUrl from "./level.glb?url";
-
-import { createGameUI } from "./UI.js";
+import room2Url from "./room2.glb?url";
 
 import { loadLevel } from "./loadlevel.js";
+
+import { createGameUI } from "./UI.js";
 
 // Scene Management/ second commit
 let currentScene = "room1";
 const scenes = {
   room1: {
     url: levelUrl,
-    startPos: { x: 0, y: 5, z: 0 },
+    startPos: { x: -3, y: 5, z: 10 }, // In front of Door_room2
   },
   room2: {
-    url: levelUrl, // For now using same level, can change later
-    startPos: { x: 0, y: 5, z: 10 },
+    url: room2Url, // Different room file
+    startPos: { x: -3, y: 5, z: 10 }, // In front of Door_room1
   },
 }; //second commit
 
@@ -144,9 +145,9 @@ class InputHandler {
     if (this.keys.has("KeyD")) {
       x += 1;
     }
-    if (this.keys.has("Space")) {
+    /* if (this.keys.has("Space")) {
       return new JumpCommand();
-    }
+    } */
 
     if (x !== 0 || z !== 0) {
       return new MoveCommand(x, z);
@@ -210,7 +211,7 @@ function updateInventoryUI() {
 } // fourth commit - inventory functions
 
 // Function to switch scenes
-function switchScene(destination) {
+async function switchScene(destination) {
   if (!gameState) return;
 
   console.log(`Switching to ${destination}`);
@@ -219,74 +220,31 @@ function switchScene(destination) {
   // Clear interactable objects // third commit - clear interactables on scene switch
   interactableObjects = []; // third commit - clear interactables on scene switch
 
-  // Clear current scene
-  while (gameState.scene.children.length > 0) {
-    gameState.scene.remove(gameState.scene.children[0]);
-  }
+  // Clear current scene (but keep player and lights)
+  const toRemove = [];
+  gameState.scene.children.forEach((child) => {
+    if (child !== gameState.player && !child.isLight) {
+      toRemove.push(child);
+    }
+  });
+  toRemove.forEach((child) => gameState.scene.remove(child));
 
-  // Clear physics world
+  // Clear physics world (but keep player's body)
   gameState.world.bodies.forEach((body) => {
-    gameState.world.removeRigidBody(body);
+    if (body !== gameState.player.body) {
+      gameState.world.removeRigidBody(body);
+    }
   });
 
-  // Reset player position
+  // Load new scene first
+  await loadLevel(gameState.scene, gameState.world, scenes[destination].url);
+
+  // Reset player position AFTER level is loaded
   const newStartPos = scenes[destination].startPos;
   gameState.player.body.setTranslation(newStartPos, true);
   gameState.player.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
   gameState.player.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
-
-  // Load new scene
-  loadLevel(gameState.scene, gameState.world, scenes[destination].url);
 } // second commit - scene switching function
-
-//OBJECT INTERACTION
-//setting up raycasts and mouse
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-
-function onObjectClick(event, camera) {
-  if (gameEnded) return; //functionality for the game end state
-
-  // Calculate mouse position in normalized device coordinates (-1 to +1)
-  mouse.x = (event.clientX / globalThis.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / globalThis.innerHeight) * 2 + 1;
-
-  // Update the raycaster with camera and mouse position
-  raycaster.setFromCamera(mouse, camera);
-
-  // Check for intersections with interactable objects
-  const intersects = raycaster.intersectObjects(interactableObjects, true);
-
-  if (intersects.length > 0) {
-    // Find the first interactable object in the hierarchy
-    let clickedObject = intersects[0].object;
-    while (clickedObject && !clickedObject.userData.interactable) {
-      clickedObject = clickedObject.parent;
-    }
-
-    if (clickedObject && clickedObject.userData.interactable) {
-      handleObjectInteraction(clickedObject);
-    }
-  }
-}
-
-function handleObjectInteraction(object) { // fourth commit - pick up items
-  console.log(`Interacted with: ${object.userData.itemType}`);
-
-  // Add to inventory
-  addToInventory(object.userData.itemType);
-
-  // Remove from scene
-  if (object.parent) {
-    object.parent.remove(object);
-  }
-
-  // Remove from interactable objects array
-  const index = interactableObjects.indexOf(object);
-  if (index > -1) {
-    interactableObjects.splice(index, 1);
-  }
-} // fourth commit - pick up items
 
 async function runGame() {
   // Must wait for rapier physics engine first
@@ -356,10 +314,56 @@ async function runGame() {
     messageUI: ui.messageUI,
   }; // second commit - initialize gameState
 
-  // Setup object interaction
-  globalThis.addEventListener("click", (event) => {
-    onObjectClick(event, camera);
-  });
+  // Object interaction with raycasting // third commit - raycasting setup
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+
+  function onObjectClick(event) {
+    if (gameEnded) return; //functionality for the game end state
+
+    // Calculate mouse position in normalized device coordinates (-1 to +1)
+    mouse.x = (event.clientX / globalThis.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / globalThis.innerHeight) * 2 + 1;
+
+    // Update the raycaster with camera and mouse position
+    raycaster.setFromCamera(mouse, camera);
+
+    // Check for intersections with interactable objects
+    const intersects = raycaster.intersectObjects(interactableObjects, true);
+
+    if (intersects.length > 0) {
+      // Find the first interactable object in the hierarchy
+      let clickedObject = intersects[0].object;
+      while (clickedObject && !clickedObject.userData.interactable) {
+        clickedObject = clickedObject.parent;
+      }
+
+      if (clickedObject && clickedObject.userData.interactable) {
+        handleObjectInteraction(clickedObject);
+      }
+    }
+  }
+
+  function handleObjectInteraction(object) { // fourth commit - pick up items
+    console.log(`Interacted with: ${object.userData.itemType}`);
+
+    // Add to inventory
+    addToInventory(object.userData.itemType);
+
+    // Remove from scene
+    if (object.parent) {
+      object.parent.remove(object);
+    }
+
+    // Remove from interactable objects array
+    const index = interactableObjects.indexOf(object);
+    if (index > -1) {
+      interactableObjects.splice(index, 1);
+    }
+  } // fourth commit - pick up items
+
+  globalThis.addEventListener("click", onObjectClick);
+  //raycasting setup
 
   // Simple lighting
   const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
@@ -430,23 +434,32 @@ async function runGame() {
           break;
         } // second commit - door collision handling
 
-        case "lockeddoor": { // fifth commit - locked door collision
+        case "lockeddoor": { // fifth commit - locked door collision (puzzle)
           const requiredItem = otherCollider.requiredItem;
-          const destination = otherCollider.destination;
 
           if (hasItem(requiredItem)) {
-            console.log(
-              `Unlocked door with ${requiredItem}! Going to ${destination}`,
-            );
+            console.log(`Unlocked door with ${requiredItem}! Door removed.`);
             showMessage(`Door unlocked with ${requiredItem}!`, 1500);
             removeFromInventory(requiredItem); // Use up the item
-            switchScene(destination);
+
+            // Find and remove the door from the scene
+            const doorBody = otherCollider.parent();
+            world.removeRigidBody(doorBody);
+
+            // Find the visual mesh and remove it
+            scene.traverse((obj) => {
+              if (obj.name && obj.name.startsWith("LockedDoor_")) {
+                if (obj.parent) {
+                  obj.parent.remove(obj);
+                }
+              }
+            });
           } else {
             console.log(`Door locked! Need: ${requiredItem}`);
             showMessage(`Locked! Need: ${requiredItem}`, 2000);
           }
           break;
-        } // fifth commit - locked door collision
+        } // fifth commit - locked door collision (puzzle)
 
         default: {
           // Hit a normal wall or floor

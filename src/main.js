@@ -1,9 +1,12 @@
 import RAPIER from "@dimforge/rapier3d-compat";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 import levelUrl from "./level.glb?url";
+
+import { createGameUI } from "./UI.js";
+
+import { loadLevel } from "./loadlevel.js";
 
 // Scene Management/ second commit
 let currentScene = "room1";
@@ -26,325 +29,6 @@ const inventory = [];
 
 // flag for game end state
 let gameEnded = false;
-
-// Function to load a GLB Level
-async function loadLevel(scene, world, url) {
-  const loader = new GLTFLoader();
-  const gltf = await loader.loadAsync(url);
-  const levelMesh = gltf.scene;
-
-  // 1. Add Visuals to Scene
-  scene.add(levelMesh);
-
-  // 2. FORCE Three.js to calculate the final positions/scales of everything right now
-  levelMesh.updateMatrixWorld(true);
-
-  // 1. Find the object by the exact name you used in Blender
-  const jumpPad = levelMesh.getObjectByName("JumpPad");
-  const goal = levelMesh.getObjectByName("Goal");
-
-  if (jumpPad) {
-    // 1. Create Body & Collider
-    const targetPos = new THREE.Vector3();
-    jumpPad.getWorldPosition(targetPos);
-
-    const padBodyDesc = RAPIER.RigidBodyDesc.fixed()
-      .setTranslation(targetPos.x, targetPos.y, targetPos.z);
-    const padBody = world.createRigidBody(padBodyDesc);
-
-    const padColliderDesc = RAPIER.ColliderDesc.cylinder(0.5, 2)
-      .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
-
-    const padCollider = world.createCollider(padColliderDesc, padBody);
-
-    padCollider.interactionType = "jumppad";
-  } else {
-    console.log("doesn't exist!");
-  }
-
-  if (goal) {
-    // 1. Create Body & Collider
-    const targetPos = new THREE.Vector3();
-    goal.getWorldPosition(targetPos);
-
-    const goalBodyDesc = RAPIER.RigidBodyDesc.fixed()
-      .setTranslation(targetPos.x, targetPos.y, targetPos.z);
-    const goalBody = world.createRigidBody(goalBodyDesc);
-
-    const goalCollsiderDesc = RAPIER.ColliderDesc.cylinder(0.5, 2)
-      .setSensor(true)
-      .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
-
-    const goalCollider = world.createCollider(goalCollsiderDesc, goalBody);
-
-    goalCollider.interactionType = "goal";
-  } else {
-    console.log("doesn't exist!");
-  }
-
-  // Find all doors in the level // second commit - door detection
-  const doors = [];
-  const lockedDoors = []; // fifth commit - locked doors
-  levelMesh.traverse((obj) => {
-    if (obj.name && obj.name.startsWith("Door_")) {
-      doors.push(obj);
-    }
-    if (obj.name && obj.name.startsWith("LockedDoor_")) { // fifth commit - locked doors
-      lockedDoors.push(obj);
-    }
-  });
-
-  // Create door colliders
-  doors.forEach((door) => {
-    const targetPos = new THREE.Vector3();
-    door.getWorldPosition(targetPos);
-
-    const doorBodyDesc = RAPIER.RigidBodyDesc.fixed()
-      .setTranslation(targetPos.x, targetPos.y, targetPos.z);
-    const doorBody = world.createRigidBody(doorBodyDesc);
-
-    const doorColliderDesc = RAPIER.ColliderDesc.cuboid(2, 3, 0.5)
-      .setSensor(true)
-      .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
-
-    const doorCollider = world.createCollider(doorColliderDesc, doorBody);
-
-    // Extract destination from door name (e.g., "Door_room2" -> "room2")
-    const destination = door.name.split("_")[1] || "room2";
-    doorCollider.interactionType = "door";
-    doorCollider.destination = destination;
-  }); // second commit - door detection
-
-  // Create locked door colliders // fifth commit - locked door setup
-  lockedDoors.forEach((door) => {
-    const targetPos = new THREE.Vector3();
-    door.getWorldPosition(targetPos);
-
-    const doorBodyDesc = RAPIER.RigidBodyDesc.fixed()
-      .setTranslation(targetPos.x, targetPos.y, targetPos.z);
-    const doorBody = world.createRigidBody(doorBodyDesc);
-
-    const doorColliderDesc = RAPIER.ColliderDesc.cuboid(2, 3, 0.5)
-      .setSensor(true)
-      .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
-
-    const doorCollider = world.createCollider(doorColliderDesc, doorBody);
-
-    // Extract required item and destination from door name
-    // Format: "LockedDoor_key_room2" -> requires "key", leads to "room2"
-    const parts = door.name.split("_");
-    const requiredItem = parts[1] || "key";
-    const destination = parts[2] || "room2";
-
-    doorCollider.interactionType = "lockeddoor";
-    doorCollider.requiredItem = requiredItem;
-    doorCollider.destination = destination;
-  }); // fifth commit - locked door setup
-
-  // Find all interactable items // third commit - find interactable objects
-  interactableObjects = [];
-  levelMesh.traverse((obj) => {
-    if (obj.name && obj.name.startsWith("Item_")) {
-      obj.userData.itemType = obj.name.split("_")[1] || "unknown";
-      obj.userData.interactable = true;
-      interactableObjects.push(obj);
-    }
-  }); // third commit - find interactable objects
-
-  levelMesh.traverse((child) => {
-    if (child.isMesh) {
-      child.castShadow = true;
-      child.receiveShadow = true;
-
-      if (child.name === "JumpPad") return;
-
-      if (child.name === "Goal") return;
-
-      if (child.name && child.name.startsWith("Door")) return; // second commit - skip doors in physics
-
-      if (child.name && child.name.startsWith("LockedDoor")) return; // fifth commit - skip locked doors in physics
-
-      // --- PHYSICS GENERATION (FIXED) ---
-
-      const rigidBodyDesc = RAPIER.RigidBodyDesc.fixed();
-      const rigidBody = world.createRigidBody(rigidBodyDesc);
-
-      const clonedGeometry = child.geometry.clone();
-
-      clonedGeometry.applyMatrix4(child.matrixWorld);
-
-      const vertices = clonedGeometry.attributes.position.array;
-
-      let indices;
-      if (clonedGeometry.index) {
-        indices = clonedGeometry.index.array;
-      } else {
-        const vertexCount = clonedGeometry.attributes.position.count;
-        indices = new Uint32Array(vertexCount);
-        for (let i = 0; i < vertexCount; i++) indices[i] = i;
-      }
-
-      // F. Create the Collider
-      const colliderDesc = RAPIER.ColliderDesc.trimesh(vertices, indices);
-      world.createCollider(colliderDesc, rigidBody);
-    }
-  });
-}
-
-function createGameUI(renderer) {
-  const gameContainer = document.createElement("div");
-  gameContainer.style.position = "relative";
-  gameContainer.style.width = "100%";
-  gameContainer.style.height = "100%";
-  document.body.appendChild(gameContainer);
-
-  // Move the existing 3D Canvas into this wrapper
-  gameContainer.appendChild(renderer.domElement);
-
-  // 2. Create the UI Overlay Layer
-  const uiLayer = document.createElement("div");
-  Object.assign(uiLayer.style, {
-    position: "absolute",
-    top: "0",
-    left: "0",
-    width: "100%",
-    height: "100%",
-    pointerEvents: "none",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    padding: "20px",
-    boxSizing: "border-box",
-  });
-  gameContainer.appendChild(uiLayer);
-
-  // 4. Create the Restart Button
-  const restartBtn = document.createElement("button");
-  restartBtn.innerText = "Restart Level";
-  Object.assign(restartBtn.style, {
-    pointerEvents: "auto",
-    cursor: "pointer",
-    padding: "10px 10px",
-    fontSize: "20px",
-    fontWeight: "bold",
-    backgroundColor: "#6de9ffff",
-    color: "white",
-    border: "2px solid white",
-    borderRadius: "8px",
-    boxShadow: "2px 2px 5px rgba(0,0,0,0.5)",
-  });
-
-  // Add Hover Effect logic
-  restartBtn.onmouseover = () => restartBtn.style.backgroundColor = "#0067acff";
-  restartBtn.onmouseout = () => restartBtn.style.backgroundColor = "#6de9ffff";
-
-  // Add Click Logic
-  restartBtn.onclick = () => {
-    console.log("Restart Clicked!");
-    globalThis.location.reload();
-  };
-
-  uiLayer.appendChild(restartBtn);
-
-  //updated ending screen
-  const levelFinishUI = document.createElement("div");
-  levelFinishUI.innerHTML = `
-    <div style="text-align: center;">
-      <div style="font-size: 80px; margin-bottom: 20px;">🎉 Victory! 🎉</div>
-      <div style="font-size: 40px; margin-bottom: 30px;">You completed the game!</div>
-      <button id="play-again-btn" style="
-        padding: 15px 40px;
-        font-size: 24px;
-        font-weight: bold;
-        background-color: #6de9ffff;
-        color: white;
-        border: 3px solid white;
-        border-radius: 10px;
-        cursor: pointer;
-        box-shadow: 3px 3px 10px rgba(0,0,0,0.5);
-      ">Play Again</button>
-    </div>
-  `;
-  Object.assign(levelFinishUI.style, {
-    position: "absolute",
-    top: "50%",
-    left: "50%",
-    transform: "translate(-50%, -50%)",
-    color: "white",
-    fontFamily: "Arial, sans-serif",
-    fontWeight: "bold",
-    backgroundColor: "rgba(46, 253, 225, 0.95)",
-    textShadow: "2px 2px 0 #000",
-    userSelect: "none",
-    padding: "50px",
-    borderRadius: "20px",
-    border: "5px solid white",
-    pointerEvents: "auto",
-    zIndex: "1000",
-  });
-  uiLayer.appendChild(levelFinishUI);
-
-  // Play Again button handler // sixth commit - play again button
-  setTimeout(() => {
-    const playAgainBtn = document.getElementById("play-again-btn");
-    if (playAgainBtn) {
-      playAgainBtn.onmouseover = () =>
-        playAgainBtn.style.backgroundColor = "#0067acff";
-      playAgainBtn.onmouseout = () =>
-        playAgainBtn.style.backgroundColor = "#6de9ffff";
-      playAgainBtn.onclick = () => {
-        console.log("Play Again Clicked!");
-        globalThis.location.reload();
-      };
-    }
-  }, 100); // sixth commit - play again button
-
-  // Inventory UI // fourth commit - inventory UI
-  const inventoryUI = document.createElement("div");
-  Object.assign(inventoryUI.style, {
-    position: "absolute",
-    top: "20px",
-    right: "20px",
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    color: "white",
-    padding: "15px",
-    borderRadius: "8px",
-    fontFamily: "Arial, sans-serif",
-    fontSize: "16px",
-    minWidth: "150px",
-    pointerEvents: "none",
-  });
-  inventoryUI.innerHTML =
-    "<strong>Inventory:</strong><br><span id='inventory-items'>Empty</span>";
-  gameContainer.appendChild(inventoryUI); // fourth commit - inventory UI
-
-  // Message UI for locked doors // fifth commit - locked door message UI
-  const messageUI = document.createElement("div");
-  Object.assign(messageUI.style, {
-    position: "absolute",
-    bottom: "20px",
-    left: "50%",
-    transform: "translateX(-50%)",
-    backgroundColor: "rgba(255, 0, 0, 0.8)",
-    color: "white",
-    padding: "15px 30px",
-    borderRadius: "8px",
-    fontFamily: "Arial, sans-serif",
-    fontSize: "18px",
-    fontWeight: "bold",
-    display: "none",
-    pointerEvents: "none",
-  });
-  gameContainer.appendChild(messageUI); // fifth commit - locked door message UI
-
-  // 5. Return references so we can update them later
-  return {
-    levelFinishUI,
-    restartBtn,
-    inventoryUI,
-    messageUI,
-  };
-}
 
 // Classes
 class Sphere extends THREE.Mesh {
@@ -555,6 +239,55 @@ function switchScene(destination) {
   loadLevel(gameState.scene, gameState.world, scenes[destination].url);
 } // second commit - scene switching function
 
+//OBJECT INTERACTION
+//setting up raycasts and mouse
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+function onObjectClick(event, camera) {
+  if (gameEnded) return; //functionality for the game end state
+
+  // Calculate mouse position in normalized device coordinates (-1 to +1)
+  mouse.x = (event.clientX / globalThis.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / globalThis.innerHeight) * 2 + 1;
+
+  // Update the raycaster with camera and mouse position
+  raycaster.setFromCamera(mouse, camera);
+
+  // Check for intersections with interactable objects
+  const intersects = raycaster.intersectObjects(interactableObjects, true);
+
+  if (intersects.length > 0) {
+    // Find the first interactable object in the hierarchy
+    let clickedObject = intersects[0].object;
+    while (clickedObject && !clickedObject.userData.interactable) {
+      clickedObject = clickedObject.parent;
+    }
+
+    if (clickedObject && clickedObject.userData.interactable) {
+      handleObjectInteraction(clickedObject);
+    }
+  }
+}
+
+function handleObjectInteraction(object) { // fourth commit - pick up items
+  console.log(`Interacted with: ${object.userData.itemType}`);
+
+  // Add to inventory
+  addToInventory(object.userData.itemType);
+
+  // Remove from scene
+  if (object.parent) {
+    object.parent.remove(object);
+  }
+
+  // Remove from interactable objects array
+  const index = interactableObjects.indexOf(object);
+  if (index > -1) {
+    interactableObjects.splice(index, 1);
+  }
+} // fourth commit - pick up items
+
 async function runGame() {
   // Must wait for rapier physics engine first
   await RAPIER.init();
@@ -623,56 +356,10 @@ async function runGame() {
     messageUI: ui.messageUI,
   }; // second commit - initialize gameState
 
-  // Object interaction with raycasting // third commit - raycasting setup
-  const raycaster = new THREE.Raycaster();
-  const mouse = new THREE.Vector2();
-
-  function onObjectClick(event) {
-    if (gameEnded) return; //functionality for the game end state
-
-    // Calculate mouse position in normalized device coordinates (-1 to +1)
-    mouse.x = (event.clientX / globalThis.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / globalThis.innerHeight) * 2 + 1;
-
-    // Update the raycaster with camera and mouse position
-    raycaster.setFromCamera(mouse, camera);
-
-    // Check for intersections with interactable objects
-    const intersects = raycaster.intersectObjects(interactableObjects, true);
-
-    if (intersects.length > 0) {
-      // Find the first interactable object in the hierarchy
-      let clickedObject = intersects[0].object;
-      while (clickedObject && !clickedObject.userData.interactable) {
-        clickedObject = clickedObject.parent;
-      }
-
-      if (clickedObject && clickedObject.userData.interactable) {
-        handleObjectInteraction(clickedObject);
-      }
-    }
-  }
-
-  function handleObjectInteraction(object) { // fourth commit - pick up items
-    console.log(`Interacted with: ${object.userData.itemType}`);
-
-    // Add to inventory
-    addToInventory(object.userData.itemType);
-
-    // Remove from scene
-    if (object.parent) {
-      object.parent.remove(object);
-    }
-
-    // Remove from interactable objects array
-    const index = interactableObjects.indexOf(object);
-    if (index > -1) {
-      interactableObjects.splice(index, 1);
-    }
-  } // fourth commit - pick up items
-
-  globalThis.addEventListener("click", onObjectClick);
-  //raycasting setup
+  // Setup object interaction
+  globalThis.addEventListener("click", (event) => {
+    onObjectClick(event, camera);
+  });
 
   // Simple lighting
   const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);

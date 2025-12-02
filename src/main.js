@@ -16,13 +16,12 @@ const scenes = {
     url: levelUrl, // For now using same level, can change later
     startPos: { x: 0, y: 5, z: 10 },
   },
-};//second commit
+}; //second commit
 
-
-// Interactable objects registry 
+// Interactable objects registry
 let interactableObjects = [];
 
-// Inventory system 
+// Inventory system
 const inventory = [];
 
 // flag for game end state
@@ -289,8 +288,10 @@ function createGameUI(renderer) {
   setTimeout(() => {
     const playAgainBtn = document.getElementById("play-again-btn");
     if (playAgainBtn) {
-      playAgainBtn.onmouseover = () => playAgainBtn.style.backgroundColor = "#0067acff";
-      playAgainBtn.onmouseout = () => playAgainBtn.style.backgroundColor = "#6de9ffff";
+      playAgainBtn.onmouseover = () =>
+        playAgainBtn.style.backgroundColor = "#0067acff";
+      playAgainBtn.onmouseout = () =>
+        playAgainBtn.style.backgroundColor = "#6de9ffff";
       playAgainBtn.onclick = () => {
         console.log("Play Again Clicked!");
         globalThis.location.reload();
@@ -313,7 +314,8 @@ function createGameUI(renderer) {
     minWidth: "150px",
     pointerEvents: "none",
   });
-  inventoryUI.innerHTML = "<strong>Inventory:</strong><br><span id='inventory-items'>Empty</span>";
+  inventoryUI.innerHTML =
+    "<strong>Inventory:</strong><br><span id='inventory-items'>Empty</span>";
   gameContainer.appendChild(inventoryUI); // fourth commit - inventory UI
 
   // Message UI for locked doors // fifth commit - locked door message UI
@@ -335,13 +337,12 @@ function createGameUI(renderer) {
   });
   gameContainer.appendChild(messageUI); // fifth commit - locked door message UI
 
-
   // 5. Return references so we can update them later
   return {
     levelFinishUI,
     restartBtn,
     inventoryUI,
-    messageUI
+    messageUI,
   };
 }
 
@@ -496,7 +497,9 @@ function showMessage(text, duration = 2000) {
 function addToInventory(itemType) {
   inventory.push(itemType);
   updateInventoryUI();
-  console.log(`Added ${itemType} to inventory. Total items: ${inventory.length}`);
+  console.log(
+    `Added ${itemType} to inventory. Total items: ${inventory.length}`,
+  );
 }
 
 function hasItem(itemType) {
@@ -521,8 +524,6 @@ function updateInventoryUI() {
     }
   }
 } // fourth commit - inventory functions
-
-
 
 // Function to switch scenes
 function switchScene(destination) {
@@ -619,7 +620,7 @@ async function runGame() {
     player: player,
     camera: camera,
     renderer: renderer,
-    messageUI: ui.messageUI
+    messageUI: ui.messageUI,
   }; // second commit - initialize gameState
 
   // Object interaction with raycasting // third commit - raycasting setup
@@ -747,7 +748,9 @@ async function runGame() {
           const destination = otherCollider.destination;
 
           if (hasItem(requiredItem)) {
-            console.log(`Unlocked door with ${requiredItem}! Going to ${destination}`);
+            console.log(
+              `Unlocked door with ${requiredItem}! Going to ${destination}`,
+            );
             showMessage(`Door unlocked with ${requiredItem}!`, 1500);
             removeFromInventory(requiredItem); // Use up the item
             switchScene(destination);

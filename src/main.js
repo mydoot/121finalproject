@@ -129,14 +129,19 @@ async function loadLevel(scene, world, url) {
 
     const doorBodyDesc = RAPIER.RigidBodyDesc.fixed()
       .setTranslation(targetPos.x, targetPos.y, targetPos.z)
-      .setRotation({ x: targetRot.x, y: targetRot.y, z: targetRot.z, w: targetRot.w });
+      .setRotation({
+        x: targetRot.x,
+        y: targetRot.y,
+        z: targetRot.z,
+        w: targetRot.w,
+      });
     const doorBody = world.createRigidBody(doorBodyDesc);
 
     // Use the door's actual scale for the collider
     const doorColliderDesc = RAPIER.ColliderDesc.cuboid(
       targetScale.x,
       targetScale.y,
-      targetScale.z
+      targetScale.z,
     ).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
     // Solid door - blocks player until unlocked
 

@@ -477,9 +477,9 @@ class InputHandler {
     if (this.keys.has("KeyD")) {
       x += 1;
     }
-    if (this.keys.has("Space")) {
+    /* if (this.keys.has("Space")) {
       return new JumpCommand();
-    }
+    } */
 
     if (x !== 0 || z !== 0) {
       return new MoveCommand(x, z);

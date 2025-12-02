@@ -4,17 +4,18 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 import levelUrl from "./level.glb?url";
+import room2Url from "./room2.glb?url";
 
 // Scene Management/ second commit
 let currentScene = "room1";
 const scenes = {
   room1: {
     url: levelUrl,
-    startPos: { x: 0, y: 5, z: 0 },
+    startPos: { x: -3, y: 5, z: 10 }, // In front of Door_room2
   },
   room2: {
-    url: levelUrl, // For now using same level, can change later
-    startPos: { x: 0, y: 5, z: 10 },
+    url: room2Url, // Different room file
+    startPos: { x: -3, y: 5, z: 10 }, // In front of Door_room1
   },
 }; //second commit
 
@@ -120,13 +121,24 @@ async function loadLevel(scene, world, url) {
     const targetPos = new THREE.Vector3();
     door.getWorldPosition(targetPos);
 
+    const targetRot = new THREE.Quaternion();
+    door.getWorldQuaternion(targetRot);
+
+    const targetScale = new THREE.Vector3();
+    door.getWorldScale(targetScale);
+
     const doorBodyDesc = RAPIER.RigidBodyDesc.fixed()
-      .setTranslation(targetPos.x, targetPos.y, targetPos.z);
+      .setTranslation(targetPos.x, targetPos.y, targetPos.z)
+      .setRotation({ x: targetRot.x, y: targetRot.y, z: targetRot.z, w: targetRot.w });
     const doorBody = world.createRigidBody(doorBodyDesc);
 
-    const doorColliderDesc = RAPIER.ColliderDesc.cuboid(2, 3, 0.5)
-      .setSensor(true)
-      .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
+    // Use the door's actual scale for the collider
+    const doorColliderDesc = RAPIER.ColliderDesc.cuboid(
+      targetScale.x,
+      targetScale.y,
+      targetScale.z
+    ).setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
+    // Solid door - blocks player until unlocked
 
     const doorCollider = world.createCollider(doorColliderDesc, doorBody);
 
@@ -526,7 +538,7 @@ function updateInventoryUI() {
 } // fourth commit - inventory functions
 
 // Function to switch scenes
-function switchScene(destination) {
+async function switchScene(destination) {
   if (!gameState) return;
 
   console.log(`Switching to ${destination}`);
@@ -535,24 +547,30 @@ function switchScene(destination) {
   // Clear interactable objects // third commit - clear interactables on scene switch
   interactableObjects = []; // third commit - clear interactables on scene switch
 
-  // Clear current scene
-  while (gameState.scene.children.length > 0) {
-    gameState.scene.remove(gameState.scene.children[0]);
-  }
+  // Clear current scene (but keep player and lights)
+  const toRemove = [];
+  gameState.scene.children.forEach((child) => {
+    if (child !== gameState.player && !child.isLight) {
+      toRemove.push(child);
+    }
+  });
+  toRemove.forEach((child) => gameState.scene.remove(child));
 
-  // Clear physics world
+  // Clear physics world (but keep player's body)
   gameState.world.bodies.forEach((body) => {
-    gameState.world.removeRigidBody(body);
+    if (body !== gameState.player.body) {
+      gameState.world.removeRigidBody(body);
+    }
   });
 
-  // Reset player position
+  // Load new scene first
+  await loadLevel(gameState.scene, gameState.world, scenes[destination].url);
+
+  // Reset player position AFTER level is loaded
   const newStartPos = scenes[destination].startPos;
   gameState.player.body.setTranslation(newStartPos, true);
   gameState.player.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
   gameState.player.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
-
-  // Load new scene
-  loadLevel(gameState.scene, gameState.world, scenes[destination].url);
 } // second commit - scene switching function
 
 async function runGame() {
@@ -743,23 +761,32 @@ async function runGame() {
           break;
         } // second commit - door collision handling
 
-        case "lockeddoor": { // fifth commit - locked door collision
+        case "lockeddoor": { // fifth commit - locked door collision (puzzle)
           const requiredItem = otherCollider.requiredItem;
-          const destination = otherCollider.destination;
 
           if (hasItem(requiredItem)) {
-            console.log(
-              `Unlocked door with ${requiredItem}! Going to ${destination}`,
-            );
+            console.log(`Unlocked door with ${requiredItem}! Door removed.`);
             showMessage(`Door unlocked with ${requiredItem}!`, 1500);
             removeFromInventory(requiredItem); // Use up the item
-            switchScene(destination);
+
+            // Find and remove the door from the scene
+            const doorBody = otherCollider.parent();
+            world.removeRigidBody(doorBody);
+
+            // Find the visual mesh and remove it
+            scene.traverse((obj) => {
+              if (obj.name && obj.name.startsWith("LockedDoor_")) {
+                if (obj.parent) {
+                  obj.parent.remove(obj);
+                }
+              }
+            });
           } else {
             console.log(`Door locked! Need: ${requiredItem}`);
             showMessage(`Locked! Need: ${requiredItem}`, 2000);
           }
           break;
-        } // fifth commit - locked door collision
+        } // fifth commit - locked door collision (puzzle)
 
         default: {
           // Hit a normal wall or floor

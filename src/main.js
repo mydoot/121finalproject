@@ -165,6 +165,13 @@ async function loadLevel(scene, world, url) {
       obj.userData.itemType = obj.name.split("_")[1] || "unknown";
       obj.userData.interactable = true;
       interactableObjects.push(obj);
+
+      // Set key color
+      if (obj.userData.itemType === "key") {
+        if (obj.material) {
+          obj.material.color.setHex(0xffb703); // yellow
+        }
+      }
     }
   }); // third commit - find interactable objects
 
@@ -703,6 +710,9 @@ async function runGame() {
   directionalLight.castShadow = true;
   scene.add(directionalLight);
 
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+  scene.add(ambientLight);
+
   camera.position.z = 10;
 
   function animate() {
@@ -812,7 +822,135 @@ async function runGame() {
     renderer.render(scene, camera);
   }
 
+  // themes + manager
+  const themeManager = new ThemeManager(scene, directionalLight, ambientLight, ui); // seventh commit - themes + ambient lighting
+
   animate();
+}
+
+const THEMES = {
+  light: {
+    background: 0x87CEEB, // Sky Blue
+    lightIntensity: 1.0,
+    ambientIntensity: 0.6,
+    ui: {
+      restartBtn: {
+        bg: "#6de9ffff",
+        hover: "#0067acff",
+        text: "white",
+        border: "white"
+      },
+      inventory: {
+        bg: "rgba(0, 0, 0, 0.7)",
+        text: "white"
+      },
+      message: {
+        bg: "rgba(255, 0, 0, 0.8)",
+        text: "white"
+      },
+      victory: {
+        bg: "rgba(46, 253, 225, 0.95)",
+        text: "white",
+        btnBg: "#6de9ffff",
+        btnHover: "#0067acff"
+      }
+    }
+  },
+  dark: {
+    background: 0x0a0a2a, // Deep Space Blue
+    lightIntensity: 0.75,
+    ambientIntensity: 0.1,
+    ui: {
+      restartBtn: {
+        bg: "#2a2a2aff",
+        hover: "#555555ff",
+        text: "#e0e0e0",
+        border: "#444"
+      },
+      inventory: {
+        bg: "rgba(255, 255, 255, 0.1)",
+        text: "#e0e0e0"
+      },
+      message: {
+        bg: "rgba(100, 0, 0, 0.9)",
+        text: "#ffcccc"
+      },
+      victory: {
+        bg: "rgba(20, 20, 40, 0.95)",
+        text: "#e0e0e0",
+        btnBg: "#444488ff",
+        btnHover: "#6666aaff"
+      }
+    }
+  }
+};
+
+class ThemeManager {
+  constructor(scene, directionalLight, ambientLight, ui) {
+    this.scene = scene;
+    this.directionalLight = directionalLight;
+    this.ambientLight = ambientLight;
+    this.ui = ui;
+
+    this.mediaQuery = globalThis.matchMedia("(prefers-color-scheme: dark)");
+    this.handleThemeChange = this.handleThemeChange.bind(this);
+
+    // Listen for changes
+    this.mediaQuery.addEventListener("change", this.handleThemeChange);
+
+    // Initial set
+    this.handleThemeChange(this.mediaQuery);
+  }
+
+  handleThemeChange(e) {
+    const themeName = e.matches ? "dark" : "light";
+    this.applyTheme(themeName);
+  }
+
+  applyTheme(themeName) {
+    console.log(`Applying theme: ${themeName}`);
+    const theme = THEMES[themeName];
+
+    // 1. Update 3D Scene
+    this.scene.background = new THREE.Color(theme.background);
+    this.directionalLight.intensity = theme.lightIntensity;
+    this.ambientLight.intensity = theme.ambientIntensity;
+
+    // 2. Update UI
+    // Restart Button
+    const restartBtn = this.ui.restartBtn;
+    restartBtn.style.backgroundColor = theme.ui.restartBtn.bg;
+    restartBtn.style.color = theme.ui.restartBtn.text;
+    restartBtn.style.borderColor = theme.ui.restartBtn.border;
+
+    // Update hover listeners for restart button to use new theme colors
+    restartBtn.onmouseover = () => restartBtn.style.backgroundColor = theme.ui.restartBtn.hover;
+    restartBtn.onmouseout = () => restartBtn.style.backgroundColor = theme.ui.restartBtn.bg;
+
+    // Inventory
+    const inventoryUI = this.ui.inventoryUI;
+    inventoryUI.style.backgroundColor = theme.ui.inventory.bg;
+    inventoryUI.style.color = theme.ui.inventory.text;
+
+    // Message UI
+    const messageUI = this.ui.messageUI;
+    messageUI.style.backgroundColor = theme.ui.message.bg;
+    messageUI.style.color = theme.ui.message.text;
+
+    // Victory Screen (if visible, or for future visibility)
+    const victoryUI = this.ui.levelFinishUI;
+    victoryUI.style.backgroundColor = theme.ui.victory.bg;
+    victoryUI.style.color = theme.ui.victory.text;
+
+    // We need to find the button inside the victory UI string/element
+    // Since it's created with innerHTML, we can query it from the container
+    const playAgainBtn = document.getElementById("play-again-btn");
+    if (playAgainBtn) {
+      playAgainBtn.style.backgroundColor = theme.ui.victory.btnBg;
+      playAgainBtn.onmouseover = () => playAgainBtn.style.backgroundColor = theme.ui.victory.btnHover;
+      playAgainBtn.onmouseout = () => playAgainBtn.style.backgroundColor = theme.ui.victory.btnBg;
+    }
+  }
 }
 
 runGame();

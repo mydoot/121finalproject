@@ -335,6 +335,37 @@ function createGameUI(renderer) {
 
   uiLayer.appendChild(restartBtn);
 
+  /* 
+    const hidejoystickBtn = document.createElement("button");
+    hidejoystickBtn.innerText = "Show Joystick";
+    Object.assign(hidejoystickBtn.style, {
+      pointerEvents: "auto",
+      cursor: "pointer",
+      padding: "10px 10px",
+      fontSize: "20px",
+      fontWeight: "bold",
+      backgroundColor: "#6de9ffff",
+      color: "white",
+      border: "2px solid white",
+      borderRadius: "8px",
+      boxShadow: "2px 2px 5px rgba(0,0,0,0.5)",
+      top: "50%",
+      left: "50%",
+      transform: "translate(-1100%, 700%)",
+    });
+  
+    // Add Hover Effect logic
+    hidejoystickBtn.onmouseover = () => hidejoystickBtn.style.backgroundColor = "#0067acff";
+    hidejoystickBtn.onmouseout = () => hidejoystickBtn.style.backgroundColor = "#6de9ffff";
+  
+    // Add Click Logic
+    hidejoystickBtn.onclick = () => {
+      console.log("Hide button");
+      //globalThis.location.reload();
+    };
+  
+    uiLayer.appendChild(hidejoystickBtn); */
+
   //updated ending screen
   const levelFinishUI = document.createElement("div");
   levelFinishUI.innerHTML = `
@@ -443,8 +474,9 @@ function createGameUI(renderer) {
   const joystickOptions = {
     zone: joystickUI, // The HTML element defined above
     mode: 'static',                                // 'static', 'semi', or 'dynamic'
-    position: { left: '50%', top: '50%' },         // Center it within the zone
-    color: 'white'
+    position: { left: '15.5%', top: '60%' },         // Center it within the zone
+    color: 'white',
+    size: 200
   };
 
   const joystickManager = nipplejs.create(joystickOptions);

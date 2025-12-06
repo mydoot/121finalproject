@@ -4,7 +4,7 @@
 
 [**>>Play the game here<<**](https://mydoot.github.io/121finalproject/)
 
-**NOTE FOR PROFESSOR:** Miga did his work on a separate local repository for the f2 changes, shown in the [miga-changes folder](miga-changes). He did the changes in [main.js](miga-changes/main.js) and created [the second room](miga-changes/room2.glb).
+**NOTE FOR PROFESSOR:** Miga did his work on a separate local repository for the f2 changes, shown in the [miga-changes folder](miga-changes). He did the changes in main.js, his exact changes shown [here](miga-changes/main.js) and created [the second room](miga-changes/room2.glb).
 
 # Team
 

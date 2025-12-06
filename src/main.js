@@ -338,8 +338,12 @@ function createGameUI(renderer) {
   const levelFinishUI = document.createElement("div");
   levelFinishUI.innerHTML = `
     <div style="text-align: center;">
-      <div style="font-size: 80px; margin-bottom: 20px;">🎉 ${lang.t("ui.victory")} 🎉</div>
-      <div style="font-size: 40px; margin-bottom: 30px;">${lang.t("ui.victoryMessage")}</div>
+      <div style="font-size: 80px; margin-bottom: 20px;">🎉 ${
+    lang.t("ui.victory")
+  } 🎉</div>
+      <div style="font-size: 40px; margin-bottom: 30px;">${
+    lang.t("ui.victoryMessage")
+  }</div>
       <button id="play-again-btn" style="
         padding: 15px 40px;
         font-size: 24px;
@@ -404,8 +408,9 @@ function createGameUI(renderer) {
     textAlign: lang.isRTL ? "right" : "left",
   });
   inventoryUI.dir = lang.isRTL ? "rtl" : "ltr";
-  inventoryUI.innerHTML =
-    `<strong>${lang.t("ui.inventory")}:</strong><br><span id='inventory-items'>${lang.t("ui.empty")}</span>`;
+  inventoryUI.innerHTML = `<strong>${
+    lang.t("ui.inventory")
+  }:</strong><br><span id='inventory-items'>${lang.t("ui.empty")}</span>`;
   gameContainer.appendChild(inventoryUI); // fourth commit - inventory UI
 
   // Message UI for locked doors // fifth commit - locked door message UI
@@ -850,9 +855,13 @@ async function runGame() {
           const requiredItem = otherCollider.requiredItem;
 
           if (hasItem(requiredItem)) {
-            const translatedItem = lang.t(`items.${requiredItem}`) || requiredItem;
+            const translatedItem = lang.t(`items.${requiredItem}`) ||
+              requiredItem;
             console.log(`Unlocked door with ${requiredItem}! Door removed.`);
-            showMessage(lang.t("messages.doorUnlocked", { item: translatedItem }), 1500);
+            showMessage(
+              lang.t("messages.doorUnlocked", { item: translatedItem }),
+              1500,
+            );
             removeFromInventory(requiredItem); // Use up the item
 
             // Find and remove the door from the scene
@@ -868,9 +877,13 @@ async function runGame() {
               }
             });
           } else {
-            const translatedItem = lang.t(`items.${requiredItem}`) || requiredItem;
+            const translatedItem = lang.t(`items.${requiredItem}`) ||
+              requiredItem;
             console.log(`Door locked! Need: ${requiredItem}`);
-            showMessage(lang.t("messages.doorLocked", { item: translatedItem }), 2000);
+            showMessage(
+              lang.t("messages.doorLocked", { item: translatedItem }),
+              2000,
+            );
           }
           break;
         } // fifth commit - locked door collision (puzzle)
@@ -895,7 +908,12 @@ async function runGame() {
   }
 
   // themes + manager
-  const themeManager = new ThemeManager(scene, directionalLight, ambientLight, ui); // seventh commit - themes + ambient lighting
+  const themeManager = new ThemeManager(
+    scene,
+    directionalLight,
+    ambientLight,
+    ui,
+  ); // seventh commit - themes + ambient lighting
 
   animate();
 }
@@ -910,23 +928,23 @@ const THEMES = {
         bg: "#6de9ffff",
         hover: "#0067acff",
         text: "white",
-        border: "white"
+        border: "white",
       },
       inventory: {
         bg: "rgba(0, 0, 0, 0.7)",
-        text: "white"
+        text: "white",
       },
       message: {
         bg: "rgba(255, 0, 0, 0.8)",
-        text: "white"
+        text: "white",
       },
       victory: {
         bg: "rgba(46, 253, 225, 0.95)",
         text: "white",
         btnBg: "#6de9ffff",
-        btnHover: "#0067acff"
-      }
-    }
+        btnHover: "#0067acff",
+      },
+    },
   },
   dark: {
     background: 0x0a0a2a, // Deep Space Blue
@@ -937,24 +955,24 @@ const THEMES = {
         bg: "#2a2a2aff",
         hover: "#555555ff",
         text: "#e0e0e0",
-        border: "#444"
+        border: "#444",
       },
       inventory: {
         bg: "rgba(255, 255, 255, 0.1)",
-        text: "#e0e0e0"
+        text: "#e0e0e0",
       },
       message: {
         bg: "rgba(100, 0, 0, 0.9)",
-        text: "#ffcccc"
+        text: "#ffcccc",
       },
       victory: {
         bg: "rgba(20, 20, 40, 0.95)",
         text: "#e0e0e0",
         btnBg: "#444488ff",
-        btnHover: "#6666aaff"
-      }
-    }
-  }
+        btnHover: "#6666aaff",
+      },
+    },
+  },
 };
 
 class ThemeManager {
@@ -996,8 +1014,10 @@ class ThemeManager {
     restartBtn.style.borderColor = theme.ui.restartBtn.border;
 
     // Update hover listeners for restart button to use new theme colors
-    restartBtn.onmouseover = () => restartBtn.style.backgroundColor = theme.ui.restartBtn.hover;
-    restartBtn.onmouseout = () => restartBtn.style.backgroundColor = theme.ui.restartBtn.bg;
+    restartBtn.onmouseover = () =>
+      restartBtn.style.backgroundColor = theme.ui.restartBtn.hover;
+    restartBtn.onmouseout = () =>
+      restartBtn.style.backgroundColor = theme.ui.restartBtn.bg;
 
     // Inventory
     const inventoryUI = this.ui.inventoryUI;
@@ -1019,8 +1039,10 @@ class ThemeManager {
     const playAgainBtn = document.getElementById("play-again-btn");
     if (playAgainBtn) {
       playAgainBtn.style.backgroundColor = theme.ui.victory.btnBg;
-      playAgainBtn.onmouseover = () => playAgainBtn.style.backgroundColor = theme.ui.victory.btnHover;
-      playAgainBtn.onmouseout = () => playAgainBtn.style.backgroundColor = theme.ui.victory.btnBg;
+      playAgainBtn.onmouseover = () =>
+        playAgainBtn.style.backgroundColor = theme.ui.victory.btnHover;
+      playAgainBtn.onmouseout = () =>
+        playAgainBtn.style.backgroundColor = theme.ui.victory.btnBg;
     }
   }
 }

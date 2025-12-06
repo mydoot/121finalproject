@@ -335,7 +335,7 @@ function createGameUI(renderer) {
 
   uiLayer.appendChild(restartBtn);
 
-  /* 
+  /*
     const hidejoystickBtn = document.createElement("button");
     hidejoystickBtn.innerText = "Show Joystick";
     Object.assign(hidejoystickBtn.style, {
@@ -353,27 +353,29 @@ function createGameUI(renderer) {
       left: "50%",
       transform: "translate(-1100%, 700%)",
     });
-  
+
     // Add Hover Effect logic
     hidejoystickBtn.onmouseover = () => hidejoystickBtn.style.backgroundColor = "#0067acff";
     hidejoystickBtn.onmouseout = () => hidejoystickBtn.style.backgroundColor = "#6de9ffff";
-  
+
     // Add Click Logic
     hidejoystickBtn.onclick = () => {
       console.log("Hide button");
       //globalThis.location.reload();
     };
-  
+
     uiLayer.appendChild(hidejoystickBtn); */
 
   //updated ending screen
   const levelFinishUI = document.createElement("div");
   levelFinishUI.innerHTML = `
     <div style="text-align: center;">
-      <div style="font-size: 80px; margin-bottom: 20px;">🎉 ${lang.t("ui.victory")
-    } 🎉</div>
-      <div style="font-size: 40px; margin-bottom: 30px;">${lang.t("ui.victoryMessage")
-    }</div>
+      <div style="font-size: 80px; margin-bottom: 20px;">🎉 ${
+    lang.t("ui.victory")
+  } 🎉</div>
+      <div style="font-size: 40px; margin-bottom: 30px;">${
+    lang.t("ui.victoryMessage")
+  }</div>
       <button id="play-again-btn" style="
         padding: 15px 40px;
         font-size: 24px;
@@ -438,8 +440,9 @@ function createGameUI(renderer) {
     textAlign: lang.isRTL ? "right" : "left",
   });
   inventoryUI.dir = lang.isRTL ? "rtl" : "ltr";
-  inventoryUI.innerHTML = `<strong>${lang.t("ui.inventory")
-    }:</strong><br><span id='inventory-items'>${lang.t("ui.empty")}</span>`;
+  inventoryUI.innerHTML = `<strong>${
+    lang.t("ui.inventory")
+  }:</strong><br><span id='inventory-items'>${lang.t("ui.empty")}</span>`;
   gameContainer.appendChild(inventoryUI); // fourth commit - inventory UI
 
   // Message UI for locked doors // fifth commit - locked door message UI
@@ -467,16 +470,16 @@ function createGameUI(renderer) {
     bottom: "0",
     left: "0",
     width: "50%",
-    height: "50%"
-  })
+    height: "50%",
+  });
   gameContainer.appendChild(joystickUI);
 
   const joystickOptions = {
     zone: joystickUI, // The HTML element defined above
-    mode: 'static',                                // 'static', 'semi', or 'dynamic'
-    position: { left: '15.5%', top: '60%' },         // Center it within the zone
-    color: 'white',
-    size: 200
+    mode: "static", // 'static', 'semi', or 'dynamic'
+    position: { left: "15.5%", top: "60%" }, // Center it within the zone
+    color: "white",
+    size: 200,
   };
 
   const joystickManager = nipplejs.create(joystickOptions);
@@ -579,7 +582,7 @@ class InputHandler {
   constructor() {
     this.keys = new Set(); // Stores 'w', 'a', 's', 'd'
 
-    this.joystickVector = { x: 0, y: 0 }
+    this.joystickVector = { x: 0, y: 0 };
     //These event listeners are always listening once InputHandler object is created in runGame()
     //Whenever a key is pressed, add it to this.keys
     globalThis.addEventListener("keydown", (e) => this.keys.add(e.code));
@@ -720,9 +723,6 @@ async function switchScene(destination) {
 
 // JOYSTICK
 
-
-
-
 async function runGame() {
   // Must wait for rapier physics engine first
   await RAPIER.init();
@@ -754,19 +754,16 @@ async function runGame() {
   const ui = createGameUI(renderer);
   ui.levelFinishUI.style.display = "none";
 
-  ui.joystickManager.on('move', (evt, data) => {
-
+  ui.joystickManager.on("move", (evt, data) => {
     const joyX = data.vector ? data.vector.x : 0;
     const joyY = data.vector ? data.vector.y : 0;
 
     // Send data to your InputHandler
     inputHandler.joystickInputs(joyX, joyY);
-  }).on('end', () => {
+  }).on("end", () => {
     // This event fires when the user lifts their finger
     inputHandler.joystickInputs(0, 0);
   });
-
-
 
   // Temp camera
   const controls = new OrbitControls(camera, renderer.domElement);

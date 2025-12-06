@@ -1,0 +1,13 @@
+{
+  "scenes": {
+    "room1": {
+      "file": "level.glb",
+      "startPos": { "x": -3, "y": 5, "z": 10 }
+    },
+    "room2": {
+      "file": "room2.glb",
+      "startPos": { "x": -3, "y": 5, "z": 10 }
+    }
+  },
+  "defaultScene": "room1"
+}

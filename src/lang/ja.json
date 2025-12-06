@@ -1,0 +1,17 @@
+{
+  "ui": {
+    "restart": "リスタート",
+    "inventory": "インベントリ",
+    "empty": "空",
+    "victory": "勝利！",
+    "victoryMessage": "ゲームクリア！",
+    "playAgain": "もう一度プレイ"
+  },
+  "messages": {
+    "doorLocked": "ロック中！必要: {item}",
+    "doorUnlocked": "{item}でドアを開けた！"
+  },
+  "items": {
+    "key": "鍵"
+  }
+}

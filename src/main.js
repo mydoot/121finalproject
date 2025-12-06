@@ -3,21 +3,85 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
+// External DSL: Import level configuration from JSON
+import levelsConfig from "./levels.json" with { type: "json" };
+
+// Static GLB imports for Vite (explicit imports are more reliable)
 import levelUrl from "./level.glb?url";
 import room2Url from "./room2.glb?url";
 
-// Scene Management/ second commit
-let currentScene = "room1";
-const scenes = {
-  room1: {
-    url: levelUrl,
-    startPos: { x: -3, y: 5, z: 10 }, // In front of Door_room2
-  },
-  room2: {
-    url: room2Url, // Different room file
-    startPos: { x: -3, y: 5, z: 10 }, // In front of Door_room1
-  },
-}; //second commit
+// Map filenames to their resolved URLs
+const glbUrlMap = {
+  "level.glb": levelUrl,
+  "room2.glb": room2Url,
+};
+
+// Build scenes object from JSON config
+function getGlbUrl(filename) {
+  return glbUrlMap[filename] || null;
+}
+
+// Scene Management
+let currentScene = levelsConfig.defaultScene;
+const scenes = {};
+for (const [sceneName, sceneData] of Object.entries(levelsConfig.scenes)) {
+  scenes[sceneName] = {
+    url: getGlbUrl(sceneData.file),
+    startPos: sceneData.startPos,
+  };
+}
+
+// --- i18n: Language Manager ---
+import langAr from "./lang/ar.json" with { type: "json" };
+import langEn from "./lang/en.json" with { type: "json" };
+import langJa from "./lang/ja.json" with { type: "json" };
+
+const translations = {
+  en: langEn,
+  ja: langJa,
+  ar: langAr,
+};
+
+class LanguageManager {
+  constructor() {
+    this.currentLang = this.detectLanguage();
+    this.strings = translations[this.currentLang] || translations.en;
+    this.applyDirection();
+  }
+
+  detectLanguage() {
+    const browserLang = navigator.language.split("-")[0];
+    if (translations[browserLang]) {
+      return browserLang;
+    }
+    return "en";
+  }
+
+  applyDirection() {
+    // Store RTL flag for use by UI elements
+    // Don't set document.body.dir as it affects flexbox layout
+    this.isRTL = this.currentLang === "ar";
+  }
+
+  t(key, replacements = {}) {
+    const keys = key.split(".");
+    let value = this.strings;
+    for (const k of keys) {
+      value = value?.[k];
+    }
+    if (typeof value !== "string") {
+      return key; // Fallback to key if not found
+    }
+    // Replace placeholders like {item}
+    for (const [placeholder, replacement] of Object.entries(replacements)) {
+      value = value.replace(`{${placeholder}}`, replacement);
+    }
+    return value;
+  }
+}
+
+const lang = new LanguageManager();
+// --- End i18n ---
 
 // Interactable objects registry
 let interactableObjects = [];
@@ -244,7 +308,7 @@ function createGameUI(renderer) {
 
   // 4. Create the Restart Button
   const restartBtn = document.createElement("button");
-  restartBtn.innerText = "Restart Level";
+  restartBtn.innerText = lang.t("ui.restart");
   Object.assign(restartBtn.style, {
     pointerEvents: "auto",
     cursor: "pointer",
@@ -274,8 +338,8 @@ function createGameUI(renderer) {
   const levelFinishUI = document.createElement("div");
   levelFinishUI.innerHTML = `
     <div style="text-align: center;">
-      <div style="font-size: 80px; margin-bottom: 20px;">🎉 Victory! 🎉</div>
-      <div style="font-size: 40px; margin-bottom: 30px;">You completed the game!</div>
+      <div style="font-size: 80px; margin-bottom: 20px;">🎉 ${lang.t("ui.victory")} 🎉</div>
+      <div style="font-size: 40px; margin-bottom: 30px;">${lang.t("ui.victoryMessage")}</div>
       <button id="play-again-btn" style="
         padding: 15px 40px;
         font-size: 24px;
@@ -286,7 +350,7 @@ function createGameUI(renderer) {
         border-radius: 10px;
         cursor: pointer;
         box-shadow: 3px 3px 10px rgba(0,0,0,0.5);
-      ">Play Again</button>
+      ">${lang.t("ui.playAgain")}</button>
     </div>
   `;
   Object.assign(levelFinishUI.style, {
@@ -337,9 +401,11 @@ function createGameUI(renderer) {
     fontSize: "16px",
     minWidth: "150px",
     pointerEvents: "none",
+    textAlign: lang.isRTL ? "right" : "left",
   });
+  inventoryUI.dir = lang.isRTL ? "rtl" : "ltr";
   inventoryUI.innerHTML =
-    "<strong>Inventory:</strong><br><span id='inventory-items'>Empty</span>";
+    `<strong>${lang.t("ui.inventory")}:</strong><br><span id='inventory-items'>${lang.t("ui.empty")}</span>`;
   gameContainer.appendChild(inventoryUI); // fourth commit - inventory UI
 
   // Message UI for locked doors // fifth commit - locked door message UI
@@ -542,9 +608,13 @@ function updateInventoryUI() {
   const inventoryItemsSpan = document.getElementById("inventory-items");
   if (inventoryItemsSpan) {
     if (inventory.length === 0) {
-      inventoryItemsSpan.innerText = "Empty";
+      inventoryItemsSpan.innerText = lang.t("ui.empty");
     } else {
-      inventoryItemsSpan.innerText = inventory.join(", ");
+      // Translate item names
+      const translatedItems = inventory.map((item) =>
+        lang.t(`items.${item}`) || item
+      );
+      inventoryItemsSpan.innerText = translatedItems.join(", ");
     }
   }
 } // fourth commit - inventory functions
@@ -780,8 +850,9 @@ async function runGame() {
           const requiredItem = otherCollider.requiredItem;
 
           if (hasItem(requiredItem)) {
+            const translatedItem = lang.t(`items.${requiredItem}`) || requiredItem;
             console.log(`Unlocked door with ${requiredItem}! Door removed.`);
-            showMessage(`Door unlocked with ${requiredItem}!`, 1500);
+            showMessage(lang.t("messages.doorUnlocked", { item: translatedItem }), 1500);
             removeFromInventory(requiredItem); // Use up the item
 
             // Find and remove the door from the scene
@@ -797,8 +868,9 @@ async function runGame() {
               }
             });
           } else {
+            const translatedItem = lang.t(`items.${requiredItem}`) || requiredItem;
             console.log(`Door locked! Need: ${requiredItem}`);
-            showMessage(`Locked! Need: ${requiredItem}`, 2000);
+            showMessage(lang.t("messages.doorLocked", { item: translatedItem }), 2000);
           }
           break;
         } // fifth commit - locked door collision (puzzle)

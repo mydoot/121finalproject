@@ -2,6 +2,7 @@
   "version": "5",
   "specifiers": {
     "npm:@dimforge/rapier3d-compat@0.19.3": "0.19.3",
+    "npm:nipplejs@~0.10.2": "0.10.2",
     "npm:three@*": "0.181.2",
     "npm:three@~0.181.2": "0.181.2",
     "npm:vite@7": "7.1.9_picomatch@4.0.3"
@@ -304,6 +305,9 @@
       "integrity": "sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==",
       "bin": true
     },
+    "nipplejs@0.10.2": {
+      "integrity": "sha512-XGxFY8C2DOtobf1fK+MXINTzkkXJLjZDDpfQhOUZf4TSytbc9s4bmA0lB9eKKM8iDivdr9NQkO7DpIQfsST+9g=="
+    },
     "picocolors@1.1.1": {
       "integrity": "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="
     },
@@ -382,6 +386,7 @@
   "workspace": {
     "dependencies": [
       "npm:@dimforge/rapier3d-compat@0.19.3",
+      "npm:nipplejs@~0.10.2",
       "npm:three@~0.181.2",
       "npm:vite@7"
     ]

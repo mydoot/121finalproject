@@ -4,6 +4,8 @@
 
 [**>>Play the game here<<**](https://mydoot.github.io/121finalproject/)
 
+**NOTE FOR PROFESSOR:** Miga did his work on a separate local repository for the f2 changes.
+
 # Team
 
 - Tools Lead: Miga

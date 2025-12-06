@@ -2,6 +2,8 @@
 
 [**Devlog**](https://docs.google.com/document/d/1fs065H6d7PleadUYDbOOKRbWhj40Rm5dpaqsy1mRFmo/edit?usp=sharing)
 
+[**>>Play the game here<<**](https://mydoot.github.io/121finalproject/)
+
 # Team
 
 - Tools Lead: Miga

@@ -1,0 +1,17 @@
+{
+  "ui": {
+    "restart": "Restart Level",
+    "inventory": "Inventory",
+    "empty": "Empty",
+    "victory": "Victory!",
+    "victoryMessage": "You completed the game!",
+    "playAgain": "Play Again"
+  },
+  "messages": {
+    "doorLocked": "Locked! Need: {item}",
+    "doorUnlocked": "Door unlocked with {item}!"
+  },
+  "items": {
+    "key": "Key"
+  }
+}

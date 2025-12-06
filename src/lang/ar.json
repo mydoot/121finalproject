@@ -1,0 +1,17 @@
+{
+  "ui": {
+    "restart": "إعادة المستوى",
+    "inventory": "المخزون",
+    "empty": "فارغ",
+    "victory": "!فوز",
+    "victoryMessage": "!لقد أكملت اللعبة",
+    "playAgain": "العب مرة أخرى"
+  },
+  "messages": {
+    "doorLocked": "مغلق! تحتاج: {item}",
+    "doorUnlocked": "!تم فتح الباب بـ {item}"
+  },
+  "items": {
+    "key": "مفتاح"
+  }
+}

@@ -731,6 +731,19 @@ async function switchScene(destination) {
   // Load new scene first
   await loadLevel(gameState.scene, gameState.world, scenes[destination].url);
 
+  setTimeout(() => {
+    const newStartPos = scenes[destination].startPos;
+    gameState.player.body.setTranslation(newStartPos, true);
+    gameState.player.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    gameState.player.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+  }, 50);
+
+  //safety 1
+  if (!newStartPos) {
+    console.warn(`Scene ${destination} is missing a startPos!`);
+    newStartPos = { x: 0, y: 5, z: 0 }; // fallback spawn
+  }
+
   // Reset player position AFTER level is loaded
   const newStartPos = scenes[destination].startPos;
   gameState.player.body.setTranslation(newStartPos, true);

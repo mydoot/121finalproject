@@ -1,7 +1,6 @@
 import RAPIER from "@dimforge/rapier3d-compat";
 import nipplejs from "nipplejs";
 import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 // External DSL: Import level configuration from JSON
@@ -765,13 +764,6 @@ async function runGame() {
     inputHandler.joystickInputs(0, 0);
   });
 
-  // Temp camera
-  const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true; // Adds momentum/smoothness to the movement
-  controls.dampingFactor = 0.05; // How quickly it slows down
-  controls.minDistance = 5; // Don't let user zoom inside the ball
-  controls.maxDistance = 50; // Don't let user zoom too far away
-
   // Player rigid body and physics
   const rigidBodyDesc = RAPIER.RigidBodyDesc.dynamic()
     .setTranslation(0.0, 5.0, 0.0)
@@ -862,7 +854,9 @@ async function runGame() {
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
   scene.add(ambientLight);
 
-  camera.position.z = 10;
+  //New Camer Pos
+  camera.position.set(1000, 50, 10);
+  camera.lookAt(0, 0, 0);
 
   function animate() {
     requestAnimationFrame(animate);
@@ -873,6 +867,18 @@ async function runGame() {
 
     player.position.set(position.x, position.y, position.z);
     player.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
+
+    // FOLLOW CAMERA
+    camera.position.lerp(
+      new THREE.Vector3(
+        player.position.x,
+        player.position.y + 5, // height above the player
+        player.position.z + 12, // distance behind the player
+      ),
+      0.1,
+    );
+
+    camera.lookAt(player.position);
 
     eventQueue.drainCollisionEvents((handle1, handle2, started) => {
       if (!started) return;

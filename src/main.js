@@ -159,16 +159,34 @@ async function loadLevel(scene, world, url) {
     }
   });
 
-  // Create door colliders
+  // Create door colliders [improved]
   doors.forEach((door) => {
     const targetPos = new THREE.Vector3();
     door.getWorldPosition(targetPos);
 
+    const targetRot = new THREE.Quaternion();
+    door.getWorldQuaternion(targetRot);
+
+    const targetScale = new THREE.Vector3();
+    door.getWorldScale(targetScale);
+
     const doorBodyDesc = RAPIER.RigidBodyDesc.fixed()
-      .setTranslation(targetPos.x, targetPos.y, targetPos.z);
+      .setTranslation(targetPos.x, targetPos.y, targetPos.z)
+      .setRotation({
+        x: targetRot.x,
+        y: targetRot.y,
+        z: targetRot.z,
+        w: targetRot.w,
+      });
+
     const doorBody = world.createRigidBody(doorBodyDesc);
 
-    const doorColliderDesc = RAPIER.ColliderDesc.cuboid(2, 3, 0.5)
+    // Use real door scale instead of hardcoding
+    const doorColliderDesc = RAPIER.ColliderDesc.cuboid(
+      targetScale.x,
+      targetScale.y,
+      targetScale.z,
+    )
       .setSensor(true)
       .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
 
